@@ -148,7 +148,7 @@ export function Coherencia() {
                     className="rounded-3xl border-transparent p-0 overflow-hidden shadow-sm bg-surface cursor-pointer active:scale-[0.99] transition-all"
                     onClick={() => setIsModalOpen(true)}
                 >
-                    <div className="p-6 border-b border-border/50">
+                    <div className="p-5 border-b border-border/50">
                         <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-3">Estado Actual</h2>
                         <div className="flex items-center gap-3">
                             <div className={`w-3 h-3 rounded-full animate-pulse ${dotColorClass}`}></div>
@@ -156,7 +156,7 @@ export function Coherencia() {
                         </div>
                     </div>
 
-                    <div className="p-6 border-b border-border/50">
+                    <div className="p-4 border-b border-border/50">
                         <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-3">Último Protocolo Activado</h2>
                         <div className="flex items-center gap-2">
                             {status.color === 'success' ? (
@@ -170,7 +170,7 @@ export function Coherencia() {
                         </div>
                     </div>
 
-                    <div className="p-6 bg-black/5 dark:bg-white/5">
+                    <div className="p-4 bg-black/5 dark:bg-white/5">
                         <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-3">Resumen de Alineación</h2>
                         <p className="text-sm text-secondary leading-relaxed italic">
                             "{status.message}"
@@ -189,7 +189,7 @@ export function Coherencia() {
                                 </span>
                             </Card>
                             <Card className="p-4 rounded-2xl border-transparent shadow-sm flex flex-col items-center">
-                                <span className="text-[9px] font-bold text-tertiary uppercase mb-1">Energía Sistema</span>
+                                <span className="text-[9px] font-bold text-tertiary uppercase mb-1">Tu energia promedio</span>
                                 <span className="text-xl font-bold text-accent">
                                     {(recentLogs.reduce((acc, log) => acc + log.energy, 0) / recentLogs.length).toFixed(1)}
                                 </span>
