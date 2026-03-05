@@ -150,6 +150,16 @@ export function InitialDiagnostic() {
 
     return (
         <div className="min-h-screen bg-main flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
+            {/* Logout safety valve */}
+            <div className="absolute top-6 right-6 z-50">
+                <button
+                    onClick={() => useAuthStore.getState().signOut()}
+                    className="text-[10px] font-bold text-tertiary/60 uppercase tracking-widest hover:text-error transition-colors p-2"
+                >
+                    Cerrar Sesión
+                </button>
+            </div>
+
             {/* Background blur decorative elements */}
             <div className="absolute top-[-10%] right-[-10%] w-64 h-64 bg-accent/5 rounded-full blur-3xl animate-pulse"></div>
             <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-success/5 rounded-full blur-3xl animate-pulse duration-700"></div>
