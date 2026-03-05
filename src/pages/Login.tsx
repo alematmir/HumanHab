@@ -16,24 +16,13 @@ export function Login() {
         setIsLoading(true);
         setError(null);
 
-        // Intenta hacer login
         const { error: signInError } = await supabase.auth.signInWithPassword({
             email,
             password,
         });
 
-        // Si falla porque el usuario no existe, tratamos de registrarlo automáticamente
-        if (signInError && signInError.message.includes('Invalid login credentials')) {
-            const { error: signUpError } = await supabase.auth.signUp({
-                email,
-                password,
-            });
-
-            if (signUpError) {
-                setError(signUpError.message);
-            }
-        } else if (signInError) {
-            setError(signInError.message);
+        if (signInError) {
+            setError('Credenciales inválidas. ¿Aún no tienes cuenta? regístrate abajo.');
         }
 
         setIsLoading(false);
@@ -79,17 +68,25 @@ export function Login() {
 
                     <Button
                         type="submit"
-                        className="w-full mt-2 py-3 rounded-xl text-base shadow-sm"
+                        className="w-full mt-2 py-3 rounded-xl text-base shadow-sm font-bold"
                         disabled={isLoading}
                     >
-                        {isLoading ? 'Cargando...' : 'Continuar'}
+                        {isLoading ? 'Iniciando sesión...' : 'Entrar'}
                     </Button>
                 </form>
 
-                <div className="mt-8 flex items-center w-full gap-4">
-                    <div className="h-px bg-border flex-1"></div>
-                    <span className="text-xs text-secondary font-medium">Acceso de sistema</span>
-                    <div className="h-px bg-border flex-1"></div>
+                <div className="mt-8 flex flex-col items-center w-full gap-4">
+                    <p className="text-xs text-secondary font-medium">
+                        ¿Primera vez?{' '}
+                        <a href="/signup" className="text-accent hover:text-accent-hover transition-colors font-bold underline">
+                            Crea tu cuenta aquí
+                        </a>
+                    </p>
+                    <div className="flex items-center w-full gap-4">
+                        <div className="h-px bg-border flex-1"></div>
+                        <span className="text-[10px] text-tertiary font-bold uppercase tracking-widest">Acceso Seguro</span>
+                        <div className="h-px bg-border flex-1"></div>
+                    </div>
                 </div>
 
                 <p className="text-xs text-secondary text-center mt-6">
@@ -98,7 +95,7 @@ export function Login() {
                 </p>
 
                 <p className="text-[10px] text-tertiary mt-12 tracking-wider">
-                    MVP1 · BUILD 1.0.4 · HUMANHAB
+                    MVP2 · BUILD 2.0.2 · HUMANHAB
                 </p>
             </div>
         </div>

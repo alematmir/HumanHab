@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
 import { Login } from '../pages/Login';
+import { Register } from '../pages/Register';
 import { Ciclo } from '../pages/Ciclo';
 import { Registro } from '../pages/Registro';
 import { Perfil } from '../pages/Perfil';
@@ -90,6 +91,7 @@ function App() {
       <Routes>
         {/* Rutas Públicas */}
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+        <Route path="/signup" element={!user ? <Register /> : <Navigate to="/" />} />
 
         {/* Diagnóstico Inicial */}
         <Route
