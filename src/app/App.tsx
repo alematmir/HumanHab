@@ -8,17 +8,20 @@ import { Registro } from '../pages/Registro';
 import { Perfil } from '../pages/Perfil';
 import { Coherencia } from '../pages/Coherencia';
 import { SetupHabit } from '../pages/SetupHabit';
+import { InitialDiagnostic } from '../pages/InitialDiagnostic';
 
 import { MainLayout } from '../components/layout/MainLayout';
 import { useCoherence } from '../hooks/useCoherence';
 import { ProtocolModal } from '../components/ui/ProtocolModal';
 import protocolAsset from '../assets/protocol_energy_flow.png';
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 function App() {
   const { user, isLoading } = useAuthStore();
   const { status, isLoading: isCoherenceLoading } = useCoherence();
   const [showGlobalProtocol, setShowGlobalProtocol] = useState(false);
+  const [hasProfile, setHasProfile] = useState<boolean | null>(null);
 
   // Protocol messages mapping
   const protocolContent = {
@@ -40,6 +43,30 @@ function App() {
     }
   }, []);
 
+  // Check for user profile
+  useEffect(() => {
+    if (!user) {
+      setHasProfile(null);
+      return;
+    }
+
+    const checkProfile = async () => {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (!error && data) {
+        setHasProfile(true);
+      } else {
+        setHasProfile(false);
+      }
+    };
+
+    checkProfile();
+  }, [user]);
+
   // Trigger protocol modal if active and hasn't been shown in this window session
   useEffect(() => {
     if (user && status.protocol !== 'Mantenimiento' && !sessionStorage.getItem('protocol_seen')) {
@@ -48,7 +75,7 @@ function App() {
     }
   }, [user, status, isCoherenceLoading]);
 
-  if (isLoading) {
+  if (isLoading || (user && hasProfile === null)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-main">
         <p className="text-tertiary text-sm tracking-widest uppercase animate-pulse">
@@ -64,14 +91,24 @@ function App() {
         {/* Rutas Públicas */}
         <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
 
+        {/* Diagnóstico Inicial */}
+        <Route
+          path="/diagnostic"
+          element={user ? (hasProfile ? <Navigate to="/" /> : <InitialDiagnostic />) : <Navigate to="/login" />}
+        />
+
         {/* Rutas Privadas / Main App */}
         <Route
           path="/"
           element={
             user ? (
-              <MainLayout>
-                <Ciclo />
-              </MainLayout>
+              hasProfile === false ? (
+                <Navigate to="/diagnostic" />
+              ) : (
+                <MainLayout>
+                  <Ciclo />
+                </MainLayout>
+              )
             ) : (
               <Navigate to="/login" />
             )
