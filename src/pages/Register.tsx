@@ -19,7 +19,7 @@ export function Register() {
         setIsLoading(true);
         setError(null);
 
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
             email,
             password,
             options: {
@@ -32,10 +32,11 @@ export function Register() {
         if (signUpError) {
             setError(signUpError.message);
             setIsLoading(false);
+        } else if (data.user && !data.session) {
+            // Success but needs confirmation
+            setError('¡Cuenta creada! Revisa tu email para confirmar y poder entrar.');
+            setIsLoading(false);
         } else {
-            // Sign up successful - Supabase usually auto-logs in depending on settings
-            // If email confirmation is required, this might need a message.
-            // But for now, we assume standard behavior or redirection to diagnostic.
             navigate('/');
         }
     };

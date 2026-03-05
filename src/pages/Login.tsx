@@ -22,7 +22,11 @@ export function Login() {
         });
 
         if (signInError) {
-            setError('Credenciales inválidas. ¿Aún no tienes cuenta? regístrate abajo.');
+            if (signInError.message.toLowerCase().includes('email not confirmed')) {
+                setError('Tu email aún no ha sido confirmado. Revisa tu bandeja de entrada o desactiva la confirmación en Supabase.');
+            } else {
+                setError('Credenciales inválidas. ¿Aún no tienes cuenta? Regístrate abajo.');
+            }
         }
 
         setIsLoading(false);

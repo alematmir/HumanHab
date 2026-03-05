@@ -173,11 +173,11 @@ export function InitialDiagnostic() {
                             </div>
                         </div>
                         <h1 className="text-3xl font-bold text-primary mb-2 tracking-tight">
-                            ¡Hola!
+                            ¡Hola, {displayName.split(' ')[0]}!
                         </h1>
                         <div className="mb-8 group">
                             <label className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-2 block group-focus-within:text-accent transition-colors">
-                                ¿Cómo prefieres que te llamemos?
+                                Nombre de preferencia
                             </label>
                             <input
                                 type="text"
