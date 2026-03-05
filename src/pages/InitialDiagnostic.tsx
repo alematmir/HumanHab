@@ -20,8 +20,14 @@ export function InitialDiagnostic() {
     const [step, setStep] = useState(0);
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [isSaving, setIsSaving] = useState(false);
+    const [displayName, setDisplayName] = useState('');
 
-    const userName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Alejandro';
+    useEffect(() => {
+        if (user) {
+            const initialName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || '';
+            setDisplayName(initialName);
+        }
+    }, [user]);
 
     const questions: Question[] = [
         {
@@ -117,6 +123,7 @@ export function InitialDiagnostic() {
 
             const profileData = {
                 user_id: user.id,
+                display_name: displayName,
                 level,
                 habit_limit: habitLimit,
                 diagnostic_answers: answers,
@@ -155,18 +162,30 @@ export function InitialDiagnostic() {
                                 <Sparkles className="w-10 h-10 text-accent" />
                             </div>
                         </div>
-                        <h1 className="text-3xl font-bold text-primary mb-4 tracking-tight">
-                            ¡Hola, {userName}!
+                        <h1 className="text-3xl font-bold text-primary mb-2 tracking-tight">
+                            ¡Hola!
                         </h1>
+                        <div className="mb-8 group">
+                            <label className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-2 block group-focus-within:text-accent transition-colors">
+                                ¿Cómo prefieres que te llamemos?
+                            </label>
+                            <input
+                                type="text"
+                                value={displayName}
+                                onChange={(e) => setDisplayName(e.target.value)}
+                                placeholder="Tu nombre..."
+                                className="w-full bg-surface border border-transparent focus:border-accent/30 rounded-2xl py-4 px-6 text-center text-xl font-bold text-primary placeholder:text-tertiary/30 outline-none transition-all shadow-sm"
+                            />
+                        </div>
                         <p className="text-secondary text-lg leading-relaxed mb-10 max-w-md mx-auto">
                             Soy <span className="text-accent font-bold">HumanHab</span>, tu guía de coherencia.
-                            Antes de empezar, necesito entender tu estado basal para diseñarte el camino con <span className="italic">menos fricción</span>.
+                            Necesito entender tu estado basal para diseñarte el camino con <span className="italic">menos fricción</span>.
                         </p>
                         <Button
                             onClick={handleNext}
                             className="w-full py-4 text-sm font-bold tracking-widest uppercase rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
                         >
-                            Comenzar Diagnóstico <ChevronRight className="w-5 h-5 ml-2" />
+                            Continuar <ChevronRight className="w-5 h-5 ml-2" />
                         </Button>
                     </div>
                 ) : (
