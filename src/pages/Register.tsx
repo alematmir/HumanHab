@@ -7,7 +7,8 @@ import { Input } from '../components/ui/Input';
 import { supabase } from '../lib/supabase';
 
 export function Register() {
-    const [name, setName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -24,7 +25,9 @@ export function Register() {
             password,
             options: {
                 data: {
-                    full_name: name
+                    first_name: firstName,
+                    last_name: lastName,
+                    full_name: `${firstName} ${lastName}`.trim()
                 }
             }
         });
@@ -53,15 +56,25 @@ export function Register() {
                 <p className="text-secondary mb-10 text-center">Únete al ecosistema de coherencia</p>
 
                 <form onSubmit={handleRegister} className="w-full flex flex-col gap-4">
-                    <Input
-                        label="¿Cómo te llamas?"
-                        type="text"
-                        placeholder="Tu nombre"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                        icon={<User className="w-5 h-5" />}
-                    />
+                    <div className="flex gap-3">
+                        <Input
+                            label="Nombre"
+                            type="text"
+                            placeholder="Ej: Alejandro"
+                            value={firstName}
+                            onChange={(e) => setFirstName(e.target.value)}
+                            required
+                            icon={<User className="w-5 h-5" />}
+                        />
+                        <Input
+                            label="Apellido"
+                            type="text"
+                            placeholder="Ej: Maturano"
+                            value={lastName}
+                            onChange={(e) => setLastName(e.target.value)}
+                            required
+                        />
+                    </div>
 
                     <Input
                         label="Email"

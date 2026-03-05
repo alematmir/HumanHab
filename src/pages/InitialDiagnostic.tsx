@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, ChevronLeft, Sparkles, Zap, Target, History, Layout } from 'lucide-react';
-import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
@@ -24,8 +23,9 @@ export function InitialDiagnostic() {
 
     useEffect(() => {
         if (user) {
-            const initialName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || '';
-            setDisplayName(initialName);
+            // Prefer first_name, then fallback to parts of full_name or email
+            const firstName = user?.user_metadata?.first_name || user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || '';
+            setDisplayName(firstName);
         }
     }, [user]);
 
@@ -112,11 +112,11 @@ export function InitialDiagnostic() {
             let level = 'Principiante';
             let habitLimit = 1;
 
-            if (answers.capacity >= 2 && answers.energy >= 6) {
+            if (answers.capacity >= 2 && (answers.energy || 0) >= 6) {
                 level = 'Intermedio';
                 habitLimit = 2;
             }
-            if (answers.capacity >= 3 && answers.resilience === 'fast' && answers.energy >= 8) {
+            if (answers.capacity >= 3 && answers.resilience === 'fast' && (answers.energy || 0) >= 8) {
                 level = 'Avanzado';
                 habitLimit = 3;
             }
@@ -172,31 +172,22 @@ export function InitialDiagnostic() {
                                 <Sparkles className="w-10 h-10 text-accent" />
                             </div>
                         </div>
-                        <h1 className="text-3xl font-bold text-primary mb-2 tracking-tight">
-                            ¡Hola, {displayName.split(' ')[0]}!
+                        <h1 className="text-4xl font-bold text-primary mb-6 tracking-tight">
+                            ¡Hola, {displayName}!
                         </h1>
-                        <div className="mb-8 group">
-                            <label className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-2 block group-focus-within:text-accent transition-colors">
-                                Nombre de preferencia
-                            </label>
-                            <input
-                                type="text"
-                                value={displayName}
-                                onChange={(e) => setDisplayName(e.target.value)}
-                                placeholder="Tu nombre..."
-                                className="w-full bg-surface border border-transparent focus:border-accent/30 rounded-2xl py-4 px-6 text-center text-xl font-bold text-primary placeholder:text-tertiary/30 outline-none transition-all shadow-sm"
-                            />
-                        </div>
+
                         <p className="text-secondary text-lg leading-relaxed mb-10 max-w-md mx-auto">
                             Soy <span className="text-accent font-bold">HumanHab</span>, tu guía de coherencia.
                             Necesito entender tu estado basal para diseñarte el camino con <span className="italic">menos fricción</span>.
                         </p>
-                        <Button
+
+                        <button
                             onClick={handleNext}
-                            className="w-full py-4 text-sm font-bold tracking-widest uppercase rounded-2xl shadow-xl hover:scale-[1.02] transition-all"
+                            className="w-full py-4 text-sm font-bold tracking-widest uppercase rounded-2xl bg-accent text-white shadow-xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 group"
                         >
-                            Continuar <ChevronRight className="w-5 h-5 ml-2" />
-                        </Button>
+                            Comenzar Diagnóstico
+                            <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                        </button>
                     </div>
                 ) : (
                     <div className="animate-in fade-in slide-in-from-right-4 duration-500">
