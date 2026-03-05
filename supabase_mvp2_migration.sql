@@ -4,6 +4,8 @@
 -- 1. Tabla de Perfiles de Usuario (Sprint 1)
 CREATE TABLE IF NOT EXISTS public.user_profiles (
     user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    first_name TEXT,
+    last_name TEXT,
     display_name TEXT,
     level TEXT NOT NULL DEFAULT 'Principiante',
     habit_limit INTEGER NOT NULL DEFAULT 1,
