@@ -57,7 +57,43 @@ export function Coherencia() {
         fetchRecentSummaries();
     }, [user, isCoherenceLoading]);
 
-    const simulateScenario = async (type: 'RESILIENTE' | 'BURN_OUT' | 'OPTIMO' | 'VOLATIL' | 'LIMPIAR') => {
+    const forceRigidity = async (level: number) => {
+        if (!user) return;
+        setIsSimulating(true);
+        try {
+            const { error } = await supabase
+                .from('user_profiles')
+                .update({ rigidity_level: level })
+                .eq('user_id', user.id);
+            if (error) throw error;
+            alert(`Nivel de rigurosidad forzado a nivel ${level} para pruebas.`);
+        } catch (err) {
+            console.error('Error forcing rigidity:', err);
+            alert('Error al forzar rigurosidad');
+        } finally {
+            setIsSimulating(false);
+        }
+    };
+
+    const forceLevel = async (level: string) => {
+        if (!user) return;
+        setIsSimulating(true);
+        try {
+            const { error } = await supabase
+                .from('user_profiles')
+                .update({ level })
+                .eq('user_id', user.id);
+            if (error) throw error;
+            alert(`Nivel de perfil forzado a ${level} para pruebas.`);
+        } catch (err) {
+            console.error('Error forcing level:', err);
+            alert('Error al forzar nivel');
+        } finally {
+            setIsSimulating(false);
+        }
+    };
+
+    const simulateScenario = async (type: 'CASCADA' | 'RESILIENTE' | 'BURN_OUT' | 'OPTIMO' | 'VOLATIL' | 'LIMPIAR') => {
         if (!user) return;
         setIsSimulating(true);
 
@@ -67,8 +103,11 @@ export function Coherencia() {
         if (type === 'LIMPIAR') {
             try {
                 await supabase.from('daily_summaries').delete().eq('user_id', user.id);
+                await supabase.from('habit_logs').delete().eq('user_id', user.id);
+                await supabase.from('energy_events').delete().eq('user_id', user.id);
                 await refetch();
                 await fetchRecentSummaries();
+                window.location.reload(); // Hard reload to clear all local states
             } catch (err) {
                 console.error('Error clearing:', err);
             } finally {
@@ -94,6 +133,10 @@ export function Coherencia() {
                 else if (i === 5) { state = 'Sostén'; energy = 6; friction = 4; }
             } else if (type === 'BURN_OUT') {
                 if (i <= 11) { state = 'Regulación'; energy = 2; friction = 9; }
+            } else if (type === 'CASCADA') {
+                // For a 14 day history, we just need the LAST TWO DAYS (i=2 and i=1) to be bad. The rest can be ok.
+                if (i <= 2) { state = 'Regulación'; energy = 3; friction = 8; }
+                else { state = 'Sostén'; energy = 6; friction = 5; }
             } else if (type === 'VOLATIL') {
                 if (i % 3 === 0) { state = 'Regulación'; energy = 3; friction = 8; }
             } else if (type === 'OPTIMO') {
@@ -238,6 +281,7 @@ export function Coherencia() {
                     </h2>
                     <div className="grid grid-cols-1 gap-3">
                         {[
+                            { id: 'CASCADA', label: 'Disfunción en Cascada', desc: 'Simula 2 días seguidos de caída brusca para activar el Escudo Preventivo.', color: 'error' },
                             { id: 'RESILIENTE', label: 'Historial Resiliente', desc: 'Simula 14 días con 2 ciclos de caída y recuperación exitosa.', color: 'success' },
                             { id: 'BURN_OUT', label: 'Agotamiento Crónico', desc: '14 días de inestabilidad profunda sin retorno al equilibrio.', color: 'error' },
                             { id: 'VOLATIL', label: 'Patrón de Inestabilidad', desc: 'Ciclos intermitentes de estrés cada 72 horas.', color: 'warning' },
@@ -259,6 +303,46 @@ export function Coherencia() {
                                 <p className="text-[10px] text-tertiary leading-relaxed">
                                     {btn.desc}
                                 </p>
+                            </button>
+                        ))}
+                    </div>
+
+                    <h2 className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] mt-8 mb-4 flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+                        Overrides de Rigurosidad (God Mode)
+                    </h2>
+                    <p className="text-[10px] text-tertiary mb-4 italic">
+                        Bypassea las Leyes Biológicas de Perfil. Cambia la rigurosidad instantáneamente para probar el Slider de Ciclo.
+                    </p>
+                    <div className="flex gap-2">
+                        {[1, 2, 3].map((level) => {
+                            const labels = ['Compasivo (N1)', 'Equilibrado (N2)', 'Dureza (N3)'];
+                            return (
+                                <button
+                                    key={level}
+                                    onClick={() => forceRigidity(level)}
+                                    disabled={isSimulating}
+                                    className="flex-1 bg-surface/40 hover:bg-surface text-[9px] font-bold text-accent uppercase tracking-widest p-3 rounded-2xl transition-all border border-accent/20 active:scale-95"
+                                >
+                                    {labels[level - 1]}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <h2 className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] mt-6 mb-4 flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+                        Overrides de Nivel de Montaña
+                    </h2>
+                    <div className="flex gap-2">
+                        {['Principiante', 'Intermedio', 'Avanzado'].map((lvl) => (
+                            <button
+                                key={lvl}
+                                onClick={() => forceLevel(lvl)}
+                                disabled={isSimulating}
+                                className="flex-1 bg-surface/40 hover:bg-surface text-[9px] font-bold text-accent uppercase tracking-widest p-3 rounded-2xl transition-all border border-accent/20 active:scale-95"
+                            >
+                                {lvl}
                             </button>
                         ))}
                     </div>

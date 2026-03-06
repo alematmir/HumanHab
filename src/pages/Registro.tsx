@@ -142,10 +142,10 @@ export function Registro() {
                                         {getFrictionLabel(summary.friction)}
                                     </span>
                                     {summary.operational_state && (
-                                        <span className={`text-[8px] font-bold uppercase tracking-widest mt-1 px-1.5 py-0.5 rounded-full border
-                                            ${summary.operational_state === 'Expansión' ? 'bg-success/5 border-success/20 text-success' :
-                                                summary.operational_state === 'Riesgo' ? 'bg-error/5 border-error/20 text-error' :
-                                                    'bg-warning/5 border-warning/20 text-warning'}`}>
+                                        <span className={`text-[8px] font-bold uppercase tracking-widest mt-1 px-2 py-0.5 rounded-full shadow-sm
+                                            ${summary.operational_state === 'Expansión' ? 'bg-success/90 text-white' :
+                                                summary.operational_state === 'Riesgo' ? 'bg-error/90 text-white' :
+                                                    'bg-warning/90 text-white'}`}>
                                             {summary.operational_state}
                                         </span>
                                     )}

@@ -6,10 +6,12 @@ import { supabase } from '../lib/supabase';
 import { habitService } from '../lib/habitService';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { useCoherence } from '../hooks/useCoherence';
 
 export function Perfil() {
     const { user, signOut } = useAuthStore();
     const navigate = useNavigate();
+    const { baselineEnergy, isLoading: isCoherenceLoading } = useCoherence();
     const [profile, setProfile] = useState<{ first_name: string, last_name: string, level: string, rigidity_level: number } | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -94,6 +96,28 @@ export function Perfil() {
                         </span>
                     </div>
                 </div>
+
+                <section>
+                    <div className="flex items-center justify-between px-1 mb-4">
+                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Baseline Bio-Conductual</h2>
+                        <span className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-1">
+                            <Layers className="w-3 h-3" /> Promedio 14D
+                        </span>
+                    </div>
+                    <div className="bg-surface rounded-3xl p-6 border border-surface flex items-center justify-between hover:border-accent/20 transition-colors group">
+                        <div>
+                            <p className="text-2xl font-bold text-primary tracking-tight">
+                                {isCoherenceLoading ? '...' : baselineEnergy.toFixed(1)}<span className="text-sm text-tertiary">/10</span>
+                            </p>
+                            <p className="text-[10px] text-tertiary mt-1 font-medium leading-relaxed max-w-[200px]">
+                                Tu centro de gravedad actual. Un día de {isCoherenceLoading ? '...' : Math.min(10, Math.floor(baselineEnergy + 1.5))} es Expansión estadística.
+                            </p>
+                        </div>
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all bg-accent/10 border border-accent/20`}>
+                            <ShieldCheck className="w-6 h-6 text-accent" />
+                        </div>
+                    </div>
+                </section>
 
                 <section>
                     <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-4 px-1">Configuración del Sistema</h2>

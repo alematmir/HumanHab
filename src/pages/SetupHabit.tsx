@@ -31,20 +31,22 @@ interface ArsenalHabit {
     description: string;
     icon: React.ReactNode;
     iconName: string;
+    defaultQuantity: number;
+    defaultUnit: string;
 }
 
 const ARSENAL: ArsenalHabit[] = [
-    { id: 'ar_med', title: 'Meditación', description: 'Enfoca tu mente y reduce el ruido cognitivo.', icon: <Sparkles className="w-6 h-6" />, iconName: 'Sparkles' },
-    { id: 'ar_hid', title: 'Hidratación', description: 'Mantén tu sistema biológico en estado óptimo.', icon: <Droplets className="w-6 h-6" />, iconName: 'Droplets' },
-    { id: 'ar_lec', title: 'Lectura', description: 'Expande tu base de conocimiento diario.', icon: <BookOpen className="w-6 h-6" />, iconName: 'BookOpen' },
-    { id: 'ar_exe', title: 'Ejercicio', description: 'Activa tu motor metabólico y energía.', icon: <Dumbbell className="w-6 h-6" />, iconName: 'Dumbbell' },
-    { id: 'ar_slp', title: 'Descanso', description: 'Optimiza tu recuperación nocturna.', icon: <Moon className="w-6 h-6" />, iconName: 'Moon' },
+    { id: 'ar_med', title: 'Meditación', description: 'Enfoca tu mente y reduce el ruido cognitivo.', icon: <Sparkles className="w-6 h-6" />, iconName: 'Sparkles', defaultQuantity: 10, defaultUnit: 'Minutos' },
+    { id: 'ar_hid', title: 'Hidratación', description: 'Mantén tu sistema biológico en estado óptimo.', icon: <Droplets className="w-6 h-6" />, iconName: 'Droplets', defaultQuantity: 2, defaultUnit: 'Litros' },
+    { id: 'ar_lec', title: 'Lectura', description: 'Expande tu base de conocimiento diario.', icon: <BookOpen className="w-6 h-6" />, iconName: 'BookOpen', defaultQuantity: 10, defaultUnit: 'Páginas' },
+    { id: 'ar_exe', title: 'Ejercicio', description: 'Activa tu motor metabólico y energía.', icon: <Dumbbell className="w-6 h-6" />, iconName: 'Dumbbell', defaultQuantity: 45, defaultUnit: 'Minutos' },
+    { id: 'ar_slp', title: 'Descanso', description: 'Optimiza tu recuperación nocturna.', icon: <Moon className="w-6 h-6" />, iconName: 'Moon', defaultQuantity: 8, defaultUnit: 'Horas' },
 ];
 
 const LEVEL_CONFIG: Record<string, { limit: number; message: string }> = {
     'Principiante': {
-        limit: 1,
-        message: 'Tu energía actual está en fase de protección. Consolidar una sola victoria hoy asegura tu éxito a largo plazo.'
+        limit: 2,
+        message: 'Tu energía actual exige foco. Consolidar hasta dos victorias consistentes te dará la base sólida que necesitas.'
     },
     'Intermedio': {
         limit: 3,
@@ -56,9 +58,12 @@ const LEVEL_CONFIG: Record<string, { limit: number; message: string }> = {
     }
 };
 
+import { useCoherence } from '../hooks/useCoherence';
+
 export function SetupHabit() {
     const { user } = useAuthStore();
     const navigate = useNavigate();
+    const { status: coherenceStatus, isLoading: coherenceLoading } = useCoherence();
 
     const [userLevel, setUserLevel] = useState<string>('Principiante');
     const [habitLimit, setHabitLimit] = useState<number>(1);
@@ -67,6 +72,9 @@ export function SetupHabit() {
     const [manualTitle, setManualTitle] = useState('');
     const [manualDesc, setManualDesc] = useState('');
     const [manualIcon, setManualIcon] = useState('Plus');
+    const [manualQuantity, setManualQuantity] = useState<number>(1);
+    const [manualUnit, setManualUnit] = useState<string>('Vez');
+    const [selectedConfigs, setSelectedConfigs] = useState<Record<string, { quantity: number; unit: string }>>({});
 
     const CUSTOM_ICONS = [
         { name: 'Plus', icon: <Plus className="w-5 h-5" /> },
@@ -125,6 +133,11 @@ export function SetupHabit() {
 
         if (selectedIds.includes(id)) {
             setSelectedIds(prev => prev.filter(i => i !== id));
+            setSelectedConfigs(prev => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
         } else {
             const currentTotal = selectedIds.length + (isManualMode ? 1 : 0);
             if (currentTotal >= habitLimit) {
@@ -133,6 +146,14 @@ export function SetupHabit() {
                 return;
             }
             setSelectedIds(prev => [...prev, id]);
+
+            const arsenalItem = ARSENAL.find(a => a.id === id);
+            if (arsenalItem) {
+                setSelectedConfigs(prev => ({
+                    ...prev,
+                    [id]: { quantity: arsenalItem.defaultQuantity, unit: arsenalItem.defaultUnit }
+                }));
+            }
         }
     };
 
@@ -149,12 +170,15 @@ export function SetupHabit() {
         try {
             const habitsToSave = selectedIds.map(id => {
                 const arsenal = ARSENAL.find(a => a.id === id);
+                const config = selectedConfigs[id] || { quantity: arsenal?.defaultQuantity || 1, unit: arsenal?.defaultUnit || 'Vez' };
                 return {
                     user_id: user.id,
                     title: arsenal?.title || 'Hábito',
                     description: arsenal?.description || '',
                     icon: arsenal?.iconName || 'Target',
-                    is_active: true
+                    is_active: true,
+                    target_quantity: config.quantity,
+                    target_unit: config.unit
                 };
             });
 
@@ -164,7 +188,9 @@ export function SetupHabit() {
                     title: manualTitle,
                     description: manualDesc,
                     icon: manualIcon,
-                    is_active: true
+                    is_active: true,
+                    target_quantity: manualQuantity,
+                    target_unit: manualUnit
                 });
             }
 
@@ -181,13 +207,38 @@ export function SetupHabit() {
         }
     };
 
-    if (isLoading) {
+    if (isLoading || coherenceLoading) {
         return (
             <div className="min-h-screen bg-main flex items-center justify-center">
                 <div className="text-center">
                     <div className="w-12 h-12 border-4 border-accent/20 border-t-accent rounded-full animate-spin mx-auto mb-4"></div>
                     <p className="text-tertiary text-[10px] font-bold uppercase tracking-widest italic">Calibrando Arquitectura...</p>
                 </div>
+            </div>
+        );
+    }
+
+    if (coherenceStatus.state === 'Cascada') {
+        return (
+            <div className="min-h-screen bg-main p-6 sm:p-12 flex items-center justify-center">
+                <Card className="w-full max-w-sm bg-surface rounded-[40px] p-8 border-error/50 shadow-2xl relative overflow-hidden text-center">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-error/20">
+                        <div className="h-full bg-error animate-[shimmer_2s_infinite]" style={{ width: '100%' }}></div>
+                    </div>
+                    <div className="w-16 h-16 rounded-3xl bg-error/10 flex items-center justify-center mx-auto mb-6">
+                        <AlertCircle className="w-8 h-8 text-error" />
+                    </div>
+                    <h2 className="text-xl font-bold text-primary mb-3">Escudo Preventivo Activo</h2>
+                    <p className="text-[12px] text-tertiary leading-relaxed mb-6">
+                        Hemos detectado disfunción en cascada sostenida en tus últimos ciclos. Para proteger tu arquitectura biológica, la adición de nuevos hábitos se encuentra <strong>bloqueada</strong>.
+                    </p>
+                    <p className="text-[10px] text-secondary italic mb-8">
+                        Tu única misión prioritaria es cumplir con tu micro-protocolo base diario de carga mínima hasta romper la racha y estabilizar el sistema &gt; 5 de energía.
+                    </p>
+                    <Button onClick={() => navigate('/')} className="w-full bg-main border border-white/5 text-secondary hover:text-white py-4 rounded-2xl text-[10px] tracking-widest uppercase font-bold">
+                        Volver al Ciclo
+                    </Button>
+                </Card>
             </div>
         );
     }
@@ -247,6 +298,31 @@ export function SetupHabit() {
                                     <p className="text-[11px] text-tertiary leading-tight group-hover:text-secondary transition-colors font-medium">
                                         {item.description}
                                     </p>
+
+                                    {isSelected && (
+                                        <div className="mt-4 flex gap-2 animate-in fade-in duration-300 pointer-events-auto" onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={selectedConfigs[item.id]?.quantity || 1}
+                                                onChange={(e) => setSelectedConfigs(prev => ({
+                                                    ...prev,
+                                                    [item.id]: { ...prev[item.id], quantity: Number(e.target.value) }
+                                                }))}
+                                                className="w-20 bg-main border border-white/5 rounded-xl p-2 text-[11px] text-primary font-bold focus:outline-none focus:ring-1 focus:ring-accent"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={selectedConfigs[item.id]?.unit || ''}
+                                                onChange={(e) => setSelectedConfigs(prev => ({
+                                                    ...prev,
+                                                    [item.id]: { ...prev[item.id], unit: e.target.value }
+                                                }))}
+                                                placeholder="Unidad (ej. Páginas)"
+                                                className="flex-1 bg-main border border-white/5 rounded-xl p-2 text-[11px] text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                                            />
+                                        </div>
+                                    )}
                                 </button>
                             )
                         })}
@@ -309,10 +385,32 @@ export function SetupHabit() {
                                         className="w-full bg-main border-transparent rounded-2xl p-4 text-sm text-primary placeholder:text-tertiary/30 focus:outline-none focus:ring-1 focus:ring-accent/30 transition-all font-bold"
                                     />
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-bold text-tertiary uppercase tracking-widest px-1">Cantidad Meta</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={manualQuantity}
+                                            onChange={(e) => setManualQuantity(Number(e.target.value))}
+                                            className="w-full bg-main border-transparent rounded-2xl p-4 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent/30 font-bold"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-bold text-tertiary uppercase tracking-widest px-1">Unidad de Medida</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: Páginas, Hs"
+                                            value={manualUnit}
+                                            onChange={(e) => setManualUnit(e.target.value)}
+                                            className="w-full bg-main border-transparent rounded-2xl p-4 text-sm text-primary placeholder:text-tertiary/30 focus:outline-none focus:ring-1 focus:ring-accent/30 font-bold"
+                                        />
+                                    </div>
+                                </div>
                                 <div className="space-y-2">
-                                    <label className="text-[9px] font-bold text-tertiary uppercase tracking-widest px-1">Definición de Éxito</label>
+                                    <label className="text-[9px] font-bold text-tertiary uppercase tracking-widest px-1">Detalle o Comentarios</label>
                                     <textarea
-                                        placeholder="¿Qué constituye una victoria para este hábito hoy?"
+                                        placeholder="Pautas adicionales para tu hábito..."
                                         value={manualDesc}
                                         onChange={(e) => setManualDesc(e.target.value)}
                                         className="w-full bg-main border-transparent rounded-2xl p-4 text-sm text-primary placeholder:text-tertiary/30 focus:outline-none focus:ring-1 focus:ring-accent/30 h-28 resize-none transition-all"

@@ -12,10 +12,10 @@
 
         --color-text-primary: #FAFAFA;
         --color-text-secondary: #C2C2C2;
-        --color-text-tertiary: #9A9A9A;
+        --color-text-tertiary: #B0B0B0; /* Increased brightness for dark backgrounds */
 
-        --color-brand-accent: #4B42B2;
-        --color-brand-accent-hover: #5C53C9;
+        --color-brand-accent: #8A80FF; /* Vibrant luminescent purple for dark backgrounds */
+        --color-brand-accent-hover: #A098FF;
 
         /* Estados Funcionales */
         --color-success: #2F7A5F;

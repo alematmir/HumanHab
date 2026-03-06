@@ -17,7 +17,12 @@ import {
     Info,
     X,
     AlertCircle,
-    ShieldCheck
+    ShieldCheck,
+    History,
+    Heart,
+    Brain,
+    Coffee,
+    Sun
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -25,6 +30,7 @@ import { Slider } from '../components/ui/Slider';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { habitService, Habit, HabitLog, EnergyEvent } from '../lib/habitService';
+import { useCoherence } from '../hooks/useCoherence';
 
 const ICON_MAP: Record<string, React.ReactNode> = {
     Sparkles: <Sparkles className="w-5 h-5 text-accent" />,
@@ -36,6 +42,11 @@ const ICON_MAP: Record<string, React.ReactNode> = {
     Zap: <Zap className="w-5 h-5 text-accent" />,
     Plus: <Plus className="w-5 h-5 text-accent" />,
     Info: <Info className="w-5 h-5 text-accent" />,
+    History: <History className="w-5 h-5 text-accent" />,
+    Heart: <Heart className="w-5 h-5 text-accent" />,
+    Brain: <Brain className="w-5 h-5 text-accent" />,
+    Coffee: <Coffee className="w-5 h-5 text-accent" />,
+    Sun: <Sun className="w-5 h-5 text-accent" />,
 };
 
 export function Ciclo() {
@@ -68,6 +79,11 @@ export function Ciclo() {
     const [pendingIntervention, setPendingIntervention] = useState<{ type: string, message: string } | null>(null);
     const [protectionActive, setProtectionActive] = useState(false);
     const [isCalibrating, setIsCalibrating] = useState(false);
+    const [rigidityLevel, setRigidityLevel] = useState(2); // 1 = Compasivo, 2 = Equilibrado, 3 = Dureza
+    const [userLevel, setUserLevel] = useState('Principiante');
+
+    // System State from Coherence
+    const { status: coherenceStatus } = useCoherence();
 
     useEffect(() => {
         if (!user) return;
@@ -75,6 +91,16 @@ export function Ciclo() {
         const fetchData = async () => {
             setIsLoading(true);
             try {
+                // 0. Get User Profile for Rigidity, Level and Calibration
+                const { data: profile } = await supabase
+                    .from('user_profiles')
+                    .select('created_at, anchor_2_symptoms, anchor_9_symptoms, rigidity_level, level')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
+
+                if (profile?.rigidity_level) setRigidityLevel(profile.rigidity_level);
+                if (profile?.level) setUserLevel(profile.level);
+
                 // 1. Get active habits
                 const activeHabits = await habitService.getActiveHabits(user.id);
                 setHabits(activeHabits);
@@ -120,12 +146,6 @@ export function Ciclo() {
 
                 // 5. Check for N+1 intervention (Yesterday's anomaly)
                 if (!sumData) { // Only check if today isn't closed yet
-                    const { data: profile } = await supabase
-                        .from('user_profiles')
-                        .select('created_at, anchor_2_symptoms, anchor_9_symptoms')
-                        .eq('user_id', user.id)
-                        .maybeSingle();
-
                     const createdAt = new Date(profile?.created_at || user?.created_at || new Date());
                     const now = new Date();
                     const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 3600 * 24);
@@ -154,6 +174,18 @@ export function Ciclo() {
 
         fetchData();
     }, [user, navigate, todayStr]);
+
+    // Refresh if date changes (Midnight boundary)
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = new Date();
+            const currentDStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            if (currentDStr !== todayStr) {
+                window.location.reload();
+            }
+        }, 60000); // Check every minute
+        return () => clearInterval(interval);
+    }, [todayStr]);
 
     const handleToggleHabit = async (habitId: string) => {
         if (isDayClosed || !user) return;
@@ -324,7 +356,7 @@ export function Ciclo() {
             </header>
 
             {isCalibrating && !isDayClosed && (
-                <div className="mb-6 mx-1 px-4 py-3 bg-accent/5 border border-accent/10 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500">
+                <div className="mb-6 mx-1 px-4 py-3 bg-accent/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500 shadow-sm border border-transparent">
                     <Sparkles className="w-4 h-4 text-accent animate-pulse shrink-0" />
                     <div>
                         <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Sincronización Biográfica</p>
@@ -380,7 +412,7 @@ export function Ciclo() {
                                 className="flex-1 min-w-0 cursor-pointer"
                             >
                                 <div className="flex items-center gap-2">
-                                    <h3 className={`font-bold text-sm truncate ${isCompleted ? 'text-white' : 'text-primary'}`}>
+                                    <h3 className={`font-bold text-sm truncate text-primary`}>
                                         {habit.title}
                                     </h3>
                                     {protectionActive && (
@@ -389,7 +421,7 @@ export function Ciclo() {
                                         </span>
                                     )}
                                 </div>
-                                <p className={`text-[11px] truncate font-medium ${isCompleted ? 'text-white/70' : 'text-tertiary'}`}>
+                                <p className={`text-[11px] truncate font-medium ${isCompleted ? 'text-accent' : 'text-tertiary'}`}>
                                     {hasInteracted ? (isCompleted ? '¡Lo lograste!' : 'Se me complicó') : 'Estado: Pendiente'}
                                 </p>
                             </div>
@@ -422,6 +454,39 @@ export function Ciclo() {
                         </Card>
                     );
                 })}
+
+                {/* Subtile Expansion Suggestion */}
+                {!isDayClosed && coherenceStatus.state === 'Expansión' && (
+                    <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-500">
+                        {(() => {
+                            const limits: Record<string, number> = {
+                                'Principiante': 2,
+                                'Intermedio': 3,
+                                'Avanzado': 5
+                            };
+                            const limit = limits[userLevel] || 2;
+                            if (habits.length < limit) {
+                                return (
+                                    <button
+                                        onClick={() => navigate('/setup')}
+                                        className="w-full h-14 rounded-[24px] bg-surface flex flex-col items-center justify-center transition-all hover:bg-accent/10 group relative overflow-hidden shadow-sm border border-transparent"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Plus className="w-4 h-4 text-accent" />
+                                            <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                                                Carga Óptima: Sumar Hábito
+                                            </span>
+                                        </div>
+                                        <span className="text-[8px] text-tertiary mt-0.5 tracking-wider italic">
+                                            Cupo Disponible: {habits.length}/{limit}
+                                        </span>
+                                    </button>
+                                );
+                            }
+                            return null;
+                        })()}
+                    </div>
+                )}
 
                 {/* Eventos Rápidos */}
                 <div className="pt-4 border-t border-white/5">
@@ -533,8 +598,8 @@ export function Ciclo() {
 
             {/* Habit Detail Modal */}
             {selectedHabit && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-main/90 backdrop-blur-sm animate-in fade-in duration-300">
-                    <Card className="w-full max-w-sm bg-surface rounded-[40px] p-8 border-accent/20 shadow-2xl relative">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-main/90 backdrop-blur-sm animate-in fade-in duration-300">
+                    <Card className="w-full max-w-sm max-h-[90vh] overflow-y-auto bg-surface rounded-[40px] p-6 sm:p-8 border-accent/20 shadow-2xl relative custom-scrollbar">
                         <button
                             onClick={() => setSelectedHabit(null)}
                             className="absolute top-6 right-6 p-2 rounded-2xl bg-main/50 text-tertiary hover:text-primary transition-colors"
@@ -544,88 +609,171 @@ export function Ciclo() {
 
                         <div className="flex flex-col items-center text-center mb-8">
                             <div className="w-20 h-20 rounded-[32px] bg-accent/10 flex items-center justify-center mb-6">
-                                {React.cloneElement(ICON_MAP[selectedHabit.icon] as React.ReactElement<any>, { className: 'w-10 h-10 text-accent' })}
+                                {React.cloneElement((ICON_MAP[selectedHabit.icon] || <Target className="w-10 h-10 text-accent" />) as React.ReactElement<any>, { className: 'w-10 h-10 text-accent' })}
                             </div>
                             <h2 className="text-2xl font-bold text-primary mb-2 tracking-tight">{selectedHabit.title}</h2>
                             <div className="flex items-center gap-2">
-                                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border
-                                    ${habitLogs[selectedHabit.id]?.is_completed ? 'bg-success/10 border-success/20 text-success' : 'bg-tertiary/10 border-tertiary/20 text-tertiary'}`}>
+                                <span className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-sm
+                                    ${habitLogs[selectedHabit.id]?.is_completed ? 'bg-success/90 text-white' : 'bg-surface border border-white/5 text-tertiary'}`}>
                                     {habitLogs[selectedHabit.id]?.is_completed ? 'Completado hoy' : 'Pendiente'}
                                 </span>
                             </div>
                         </div>
 
-                        <div className="space-y-6">
-                            <div className="text-center">
-                                <h4 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-3">Definición de Éxito</h4>
-                                <p className="text-sm font-medium text-secondary leading-relaxed italic opacity-80">
-                                    "{selectedHabit.description || 'Enfoque y coherencia para el micro-protocolo de hoy.'}"
-                                </p>
-                            </div>
+                        {(() => {
+                            // 1. Check for acute daily anomalies first
+                            const anomaly = detectAnomalies();
+                            let systemOpState = 'Expansión';
 
-                            <div className="space-y-4">
-                                <Slider
-                                    label="¿Qué tanto te costó hoy?"
-                                    value={habitLogs[selectedHabit.id]?.friction || 5}
-                                    onChange={async (val) => {
-                                        if (isDayClosed || !user) return;
+                            if (anomaly?.type === 'Fuga de Enfoque' || protectionActive) systemOpState = 'Riesgo';
+                            else if (anomaly?.type === 'Estrés Sistémico') systemOpState = 'Regulación';
+                            else {
+                                // 2. If no acute anomaly today, fall back to the overarching System State (Coherence)
+                                const coh = coherenceStatus.state;
+                                if (coh === 'Cascada') systemOpState = 'Cascada';
+                                else if (coh === 'Riesgo' || coh === 'Inestable') systemOpState = 'Riesgo';
+                                else if (coh === 'Regulación' || coh === 'Atención') systemOpState = 'Regulación';
+                                else systemOpState = 'Expansión';
+                            }
 
-                                        // Update local state immediately for responsiveness
-                                        const currentLog = habitLogs[selectedHabit.id] || {
-                                            habit_id: selectedHabit.id,
-                                            user_id: user.id,
-                                            date: todayStr,
-                                            friction: val,
-                                            is_completed: false
-                                        };
+                            let multiplier = 1;
+                            if (systemOpState === 'Cascada') {
+                                // SPRINT 8: Forced Intervention. Ignores user rigidity setting.
+                                multiplier = 0.1;
+                            } else if (systemOpState === 'Riesgo') {
+                                multiplier = rigidityLevel === 1 ? 0.1 : rigidityLevel === 2 ? 0.3 : 0.5;
+                            } else if (systemOpState === 'Regulación') {
+                                multiplier = rigidityLevel === 1 ? 0.3 : rigidityLevel === 2 ? 0.5 : 0.8;
+                            }
 
-                                        setHabitLogs(prev => ({
-                                            ...prev,
-                                            [selectedHabit.id]: { ...currentLog, friction: val }
-                                        }));
+                            const baseQuantity = Number(selectedHabit.target_quantity) || 1;
+                            const unit = selectedHabit.target_unit || 'Vez';
+                            const recommendedQuantity = Math.max(1, Math.round(baseQuantity * multiplier));
 
-                                        try {
-                                            await habitService.upsertHabitLog({
-                                                ...currentLog,
-                                                friction: val
-                                            });
-                                        } catch (err) {
-                                            console.error('Error updating habit friction:', err);
-                                            // Optional: revert state on error
-                                        }
-                                    }}
-                                    colorClass="bg-accent"
-                                    disabled={isDayClosed}
-                                />
-                                <p className="text-[9px] text-tertiary px-1 italic">
-                                    Determina la dificultad específica de este hábito hoy.
-                                </p>
-                            </div>
+                            // Let's cap the slider at the exact base target so the user doesn't get confused by allowing 1.5x
+                            const maxSliderVal = baseQuantity;
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-main/30 rounded-2xl p-4 border border-white/5">
-                                    <h4 className="text-[9px] font-bold text-tertiary uppercase tracking-widest mb-1">Inicio de Hilo</h4>
-                                    <p className="text-xs font-bold text-primary">
-                                        {new Date(selectedHabit.created_at || '').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-                                    </p>
+                            let message = selectedHabit.description || 'Enfoque y coherencia para el micro-protocolo de hoy.';
+                            if (systemOpState === 'Cascada') {
+                                message = `[Alerta de Cascada] El sistema detectó sobrecarga estructural sostenida. Hemos reducido forzosamente tu carga a ${recommendedQuantity} ${unit} para evitar el burnout. Romper esta racha es tu única prioridad hoy.`;
+                            } else if (multiplier < 1) {
+                                message = `[Micro-Intervención] Tu estado de sistema es ${coherenceStatus.state}. El protocolo sugiere reducir la exigencia a ${recommendedQuantity} ${unit}. Si lográs esto, la meta de hoy se considerará completada.`;
+                            }
+
+                            const cLog = habitLogs[selectedHabit.id];
+
+                            return (
+                                <div className="space-y-6">
+                                    <div className="text-center">
+                                        <h4 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-3">Definición Estratégica</h4>
+                                        <p className="text-sm font-medium text-secondary leading-relaxed italic opacity-80">
+                                            "{message}"
+                                        </p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <Slider
+                                            label={`¿Cuánto hiciste? (Sugerido: ${recommendedQuantity} ${unit})`}
+                                            value={cLog?.completed_quantity ?? 0}
+                                            min={0}
+                                            max={maxSliderVal}
+                                            minLabel="0"
+                                            maxLabel={`Max (${maxSliderVal})`}
+                                            onChange={async (val) => {
+                                                if (isDayClosed || !user) return;
+                                                const currentLog = habitLogs[selectedHabit.id] || {
+                                                    habit_id: selectedHabit.id,
+                                                    user_id: user.id,
+                                                    date: todayStr,
+                                                    friction: 5,
+                                                    is_completed: false,
+                                                    completed_quantity: 0
+                                                };
+                                                // Auto complete removed. User must click checkmark on main list.
+                                                // We only save the quantity.
+
+                                                setHabitLogs(prev => ({
+                                                    ...prev,
+                                                    [selectedHabit.id]: { ...currentLog, completed_quantity: val }
+                                                }));
+
+                                                try {
+                                                    await habitService.upsertHabitLog({
+                                                        ...currentLog,
+                                                        completed_quantity: val
+                                                    });
+                                                } catch (err) {
+                                                    console.error('Error updating quantity:', err);
+                                                }
+                                            }}
+                                            colorClass={multiplier < 1 ? "bg-accent/80" : "bg-success/80"}
+                                            disabled={isDayClosed}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <Slider
+                                            label="¿Qué tanto te costó hoy?"
+                                            value={cLog?.friction || 5}
+                                            onChange={async (val) => {
+                                                if (isDayClosed || !user) return;
+                                                const currentLog = habitLogs[selectedHabit.id] || {
+                                                    habit_id: selectedHabit.id,
+                                                    user_id: user.id,
+                                                    date: todayStr,
+                                                    friction: val,
+                                                    is_completed: false,
+                                                    completed_quantity: 0
+                                                };
+
+                                                setHabitLogs(prev => ({
+                                                    ...prev,
+                                                    [selectedHabit.id]: { ...currentLog, friction: val }
+                                                }));
+
+                                                try {
+                                                    await habitService.upsertHabitLog({
+                                                        ...currentLog,
+                                                        friction: val
+                                                    });
+                                                } catch (err) {
+                                                    console.error('Error updating friction:', err);
+                                                }
+                                            }}
+                                            colorClass="bg-accent"
+                                            disabled={isDayClosed}
+                                        />
+                                        <p className="text-[9px] text-tertiary px-1 italic">
+                                            Determina la dificultad sistémica que te generó esta acción.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="bg-main/30 rounded-2xl p-4 border border-white/5">
+                                            <h4 className="text-[9px] font-bold text-tertiary uppercase tracking-widest mb-1">Inicio de Hilo</h4>
+                                            <p className="text-xs font-bold text-primary">
+                                                {new Date(selectedHabit.created_at || '').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                                            </p>
+                                        </div>
+                                        <div className="bg-main/30 rounded-2xl p-4 border border-white/5">
+                                            <h4 className="text-[9px] font-bold text-tertiary uppercase tracking-widest mb-1">Días Activo</h4>
+                                            <p className="text-xs font-bold text-primary">
+                                                {Math.max(1, Math.floor((new Date().getTime() - new Date(selectedHabit.created_at || '').getTime()) / (1000 * 3600 * 24)))} Días
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4">
+                                        <Button
+                                            onClick={() => setSelectedHabit(null)}
+                                            className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl"
+                                        >
+                                            Cerrar Detalle
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="bg-main/30 rounded-2xl p-4 border border-white/5">
-                                    <h4 className="text-[9px] font-bold text-tertiary uppercase tracking-widest mb-1">Días Activo</h4>
-                                    <p className="text-xs font-bold text-primary">
-                                        {Math.max(1, Math.floor((new Date().getTime() - new Date(selectedHabit.created_at || '').getTime()) / (1000 * 3600 * 24)))} Días
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="pt-4">
-                                <Button
-                                    onClick={() => setSelectedHabit(null)}
-                                    className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl"
-                                >
-                                    Cerrar Detalle
-                                </Button>
-                            </div>
-                        </div>
+                            );
+                        })()}
                     </Card>
                 </div>
             )}

@@ -7,6 +7,8 @@ export interface Habit {
     description: string;
     icon: string;
     is_active: boolean;
+    target_quantity?: number;
+    target_unit?: string;
     created_at?: string;
     updated_at?: string;
 }
@@ -33,6 +35,7 @@ export interface HabitLog {
     date: string;
     friction: number;
     is_completed: boolean;
+    completed_quantity?: number;
     note?: string;
     created_at?: string;
 }
