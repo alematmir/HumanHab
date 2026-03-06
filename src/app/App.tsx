@@ -23,8 +23,8 @@ function App() {
   const { status, isLoading: isCoherenceLoading } = useCoherence();
   const [showGlobalProtocol, setShowGlobalProtocol] = useState(false);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
+  const [hasHabits, setHasHabits] = useState<boolean | null>(null);
 
-  // Protocol messages mapping
   const protocolContent = {
     'Recuperación': 'Hoy hubo fricción. No es ruptura. Es ajuste. Retomá desde el punto mínimo.',
     'Alerta': 'El sistema detectó una baja leve. Prioriza estabilidad sobre expansión. Mantén el ritmo.',
@@ -33,8 +33,7 @@ function App() {
     'Mantenimiento': 'Sincronización óptima detectada. Continúa con el flujo actual del sistema.'
   };
 
-  // Theme and Protocol initialization
-  React.useEffect(() => {
+  useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
       document.documentElement.classList.add('light');
@@ -44,28 +43,40 @@ function App() {
     }
   }, []);
 
-  // Check for user profile
+  // Check for user profile and habits
   useEffect(() => {
     if (!user) {
       setHasProfile(null);
+      setHasHabits(null);
       return;
     }
 
-    const checkProfile = async () => {
-      const { data, error } = await supabase
+    const checkStatus = async () => {
+      // Check Profile
+      const { data: profile } = await supabase
         .from('user_profiles')
         .select('user_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (!error && data) {
+      if (profile) {
         setHasProfile(true);
+
+        // Check Habits
+        const { count } = await supabase
+          .from('habits')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('is_active', true);
+
+        setHasHabits((count || 0) > 0);
       } else {
         setHasProfile(false);
+        setHasHabits(false);
       }
     };
 
-    checkProfile();
+    checkStatus();
   }, [user]);
 
   // Trigger protocol modal if active and hasn't been shown in this window session
@@ -106,6 +117,8 @@ function App() {
             user ? (
               hasProfile === false ? (
                 <Navigate to="/diagnostic" />
+              ) : hasHabits === false ? (
+                <Navigate to="/setup" />
               ) : (
                 <MainLayout>
                   <Ciclo />

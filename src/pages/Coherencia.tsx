@@ -7,24 +7,22 @@ import { ProtocolModal } from '../components/ui/ProtocolModal';
 import protocolAsset from '../assets/protocol_energy_flow.png';
 import { useCoherence } from '../hooks/useCoherence';
 
-interface Log {
+interface LogSummary {
     id: string;
     friction: number;
     energy: number;
-    status: string;
     date: string;
     note?: string;
 }
 
 export function Coherencia() {
     const { user } = useAuthStore();
-    const { status, isLoading: isCoherenceLoading, refetch } = useCoherence();
-    const [recentLogs, setRecentLogs] = useState<Log[]>([]);
+    const { status, recoverySpeed, isLoading: isCoherenceLoading, refetch } = useCoherence();
+    const [recentSummaries, setRecentSummaries] = useState<LogSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSimulating, setIsSimulating] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Protocol messages mapping
     const protocolContent = {
         'Recuperación': 'Hoy hubo fricción. No es ruptura. Es ajuste. Retomá desde el punto mínimo.',
         'Alerta': 'El sistema detectó una baja leve. Prioriza estabilidad sobre expansión. Mantén el ritmo.',
@@ -37,87 +35,86 @@ export function Coherencia() {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     };
 
-    const fetchRecentLogs = async () => {
+    const fetchRecentSummaries = async () => {
         if (!user) return;
         setIsLoading(true);
         try {
             const { data } = await supabase
-                .from('daily_logs')
+                .from('daily_summaries')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('date', { ascending: false })
                 .limit(2);
-            setRecentLogs(data || []);
+            setRecentSummaries(data || []);
         } catch (err) {
-            console.error('Error fetching recent logs:', err);
+            console.error('Error fetching recent summaries:', err);
         } finally {
             setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchRecentLogs();
+        fetchRecentSummaries();
     }, [user, isCoherenceLoading]);
 
-    const simulateScenario = async (type: 'ESTABLE' | 'ALERTA' | 'INESTABLE' | 'OLVIDADO') => {
+    const simulateScenario = async (type: 'RESILIENTE' | 'BURN_OUT' | 'OPTIMO' | 'VOLATIL' | 'LIMPIAR') => {
         if (!user) return;
-
-        const { data: cycleData } = await supabase
-            .from('cycles')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('is_active', true)
-            .limit(1)
-            .single();
-
-        if (!cycleData) {
-            alert('Necesitas tener un ciclo activo para simular.');
-            return;
-        }
-
         setIsSimulating(true);
 
         const today = new Date();
-        const yesterday = new Date();
-        yesterday.setDate(today.getDate() - 1);
+        const summaries = [];
 
-        const tStr = getLocalDateStr(today);
-        const yStr = getLocalDateStr(yesterday);
-
-        const logs = [];
-
-        if (type === 'ESTABLE') {
-            logs.push(
-                { user_id: user.id, cycle_id: cycleData.id, date: tStr, friction: 2, energy: 8, status: 'CUMPLIDO', note: 'Simulación: Estable' },
-                { user_id: user.id, cycle_id: cycleData.id, date: yStr, friction: 3, energy: 7, status: 'CUMPLIDO', note: 'Simulación: Estable' }
-            );
-        } else if (type === 'ALERTA') {
-            logs.push(
-                { user_id: user.id, cycle_id: cycleData.id, date: tStr, friction: 8, energy: 3, status: 'DIFICULTAD', note: 'Simulación: Me ha costado hoy' },
-                { user_id: user.id, cycle_id: cycleData.id, date: yStr, friction: 3, energy: 8, status: 'CUMPLIDO', note: 'Simulación: Logré ayer' }
-            );
-        } else if (type === 'INESTABLE') {
-            logs.push(
-                { user_id: user.id, cycle_id: cycleData.id, date: tStr, friction: 9, energy: 2, status: 'DIFICULTAD', note: 'Simulación: Crítico hoy' },
-                { user_id: user.id, cycle_id: cycleData.id, date: yStr, friction: 8, energy: 3, status: 'DIFICULTAD', note: 'Simulación: Crítico ayer' }
-            );
-        } else if (type === 'OLVIDADO') {
-            const dayBeforeYesterday = new Date();
-            dayBeforeYesterday.setDate(today.getDate() - 2);
-            const dbyStr = getLocalDateStr(dayBeforeYesterday);
-
+        if (type === 'LIMPIAR') {
             try {
-                await supabase.from('daily_logs').delete().eq('user_id', user.id).in('date', [tStr, yStr]);
-                logs.push({ user_id: user.id, cycle_id: cycleData.id, date: dbyStr, friction: 3, energy: 7, status: 'CUMPLIDO', note: 'Simulación: Día olvidado (hace 2 días)' });
+                await supabase.from('daily_summaries').delete().eq('user_id', user.id);
+                await refetch();
+                await fetchRecentSummaries();
             } catch (err) {
-                console.error('Error clearing for forgotten day:', err);
+                console.error('Error clearing:', err);
+            } finally {
+                setIsSimulating(false);
             }
+            return;
+        }
+
+        // Generate 14 days of history (excluding today)
+        for (let i = 14; i >= 1; i--) {
+            const date = new Date();
+            date.setDate(today.getDate() - i);
+            const dStr = getLocalDateStr(date);
+
+            let friction = 3, energy = 7, state = 'Expansión';
+
+            if (type === 'RESILIENTE') {
+                // Drop on day -10/-9, recover on -8
+                if (i === 11 || i === 10) { state = 'Regulación'; energy = 3; friction = 8; }
+                else if (i === 9) { state = 'Sostén'; energy = 6; friction = 4; }
+                // Drop on day -5, recover on -4
+                else if (i === 6) { state = 'Riesgo'; energy = 7; friction = 8; }
+                else if (i === 5) { state = 'Sostén'; energy = 6; friction = 4; }
+            } else if (type === 'BURN_OUT') {
+                if (i <= 11) { state = 'Regulación'; energy = 2; friction = 9; }
+            } else if (type === 'VOLATIL') {
+                if (i % 3 === 0) { state = 'Regulación'; energy = 3; friction = 8; }
+            } else if (type === 'OPTIMO') {
+                state = 'Expansión'; energy = 9; friction = 1;
+            }
+
+            summaries.push({
+                user_id: user.id,
+                date: dStr,
+                friction,
+                energy,
+                operational_state: state,
+                note: `Simulación ${type}: Día -${i}`
+            });
         }
 
         try {
-            const { error } = await supabase.from('daily_logs').upsert(logs, { onConflict: 'user_id,date' });
+            const { error } = await supabase.from('daily_summaries').upsert(summaries, { onConflict: 'user_id,date' });
             if (error) throw error;
             await refetch();
+            await fetchRecentSummaries();
         } catch (err) {
             console.error('Error simulating:', err);
             alert('Error en simulación');
@@ -134,7 +131,9 @@ export function Coherencia() {
         );
     }
 
-    const dotColorClass = status.color === 'success' ? 'bg-success' : status.color === 'warning' ? 'bg-warning' : 'bg-error';
+    const dotColorClass = status.color === 'success' ? 'bg-success shadow-[0_0_12px_rgba(34,197,94,0.4)]' :
+        status.color === 'warning' ? 'bg-warning shadow-[0_0_12px_rgba(245,158,11,0.4)]' :
+            'bg-error shadow-[0_0_12px_rgba(239,68,68,0.4)]';
 
     return (
         <div className="flex flex-col min-h-[calc(100vh-120px)] animate-in fade-in duration-500 pb-10">
@@ -145,93 +144,123 @@ export function Coherencia() {
 
             <div className="space-y-4">
                 <Card
-                    className="rounded-3xl border-transparent p-6 overflow-hidden shadow-sm bg-surface cursor-pointer active:scale-[0.99] transition-all space-y-6"
+                    className="rounded-[32px] border-transparent p-8 overflow-hidden shadow-2xl bg-surface cursor-pointer active:scale-[0.99] transition-all space-y-8"
                     onClick={() => setIsModalOpen(true)}
                 >
-                    <div>
-                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-3">Estado Actual</h2>
-                        <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full animate-pulse ${dotColorClass}`}></div>
-                            <span className="text-2xl font-bold text-primary tracking-tight">{status.state}</span>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-4">Estado del Sistema</h2>
+                            <div className="flex items-center gap-4">
+                                <div className={`w-4 h-4 rounded-full animate-pulse ${dotColorClass}`}></div>
+                                <span className="text-3xl font-bold text-primary tracking-tight">{status.state}</span>
+                            </div>
                         </div>
-                    </div>
-
-                    <div>
-                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-3">Último Protocolo Activado</h2>
-                        <div className="flex items-center gap-2">
+                        <div className="p-3 bg-main rounded-2xl border border-white/5">
                             {status.color === 'success' ? (
-                                <CheckCircle2 className="w-5 h-5 text-success" />
+                                <CheckCircle2 className="w-6 h-6 text-success" />
                             ) : status.color === 'warning' ? (
-                                <Info className="w-5 h-5 text-warning" />
+                                <Info className="w-6 h-6 text-warning" />
                             ) : (
-                                <AlertTriangle className="w-5 h-5 text-error" />
+                                <AlertTriangle className="w-6 h-6 text-error" />
                             )}
-                            <span className="text-lg font-medium text-primary">{status.protocol}</span>
                         </div>
                     </div>
 
                     <div>
-                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-3">Resumen de Alineación</h2>
-                        <p className="text-sm text-secondary leading-relaxed italic">
+                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-4">Protocolo Biológico</h2>
+                        <div className="flex items-center gap-3">
+                            <span className="text-xl font-bold text-accent">{status.protocol}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-4">Alineación Conductual</h2>
+                        <p className="text-sm text-secondary leading-relaxed italic pr-4">
                             "{status.message}"
                         </p>
                     </div>
                 </Card>
 
-                {recentLogs.length > 0 && (
-                    <div className="px-1">
-                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-4 pl-1">Métricas de entrada</h2>
-                        <div className="grid grid-cols-2 gap-4">
-                            <Card className="p-4 rounded-2xl border-transparent shadow-sm flex flex-col items-center">
-                                <span className="text-[9px] font-bold text-tertiary uppercase mb-1">Fricción Promedio</span>
-                                <span className="text-xl font-bold text-primary">
-                                    {(recentLogs.reduce((acc, log) => acc + log.friction, 0) / recentLogs.length).toFixed(1)}
+                {recentSummaries.length > 0 && (
+                    <div className="px-2 pt-4">
+                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-4 text-center">Métricas de Sincronización</h2>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <Card className="p-5 rounded-3xl border-transparent shadow-sm flex flex-col items-center bg-surface">
+                                <span className="text-[9px] font-bold text-tertiary uppercase mb-2">Fricción Promedio</span>
+                                <span className="text-2xl font-bold text-primary">
+                                    {(recentSummaries.reduce((acc, s) => acc + s.friction, 0) / recentSummaries.length).toFixed(1)}
                                 </span>
                             </Card>
-                            <Card className="p-4 rounded-2xl border-transparent shadow-sm flex flex-col items-center">
-                                <span className="text-[9px] font-bold text-tertiary uppercase mb-1">Tu energia promedio</span>
-                                <span className="text-xl font-bold text-accent">
-                                    {(recentLogs.reduce((acc, log) => acc + log.energy, 0) / recentLogs.length).toFixed(1)}
+                            <Card className="p-5 rounded-3xl border-transparent shadow-sm flex flex-col items-center bg-surface">
+                                <span className="text-[9px] font-bold text-tertiary uppercase mb-2">Vitalidad Promedio</span>
+                                <span className="text-2xl font-bold text-accent">
+                                    {(recentSummaries.reduce((acc, s) => acc + s.energy, 0) / recentSummaries.length).toFixed(1)}
                                 </span>
                             </Card>
                         </div>
+
+                        {recoverySpeed && (
+                            <Card className="p-6 rounded-[32px] border-accent/10 shadow-sm flex flex-col items-center bg-accent/[0.03] border relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                    <Zap className="w-12 h-12 text-accent" />
+                                </div>
+                                <span className="text-[9px] font-bold text-accent uppercase mb-3 tracking-[0.2em]">Velocidad de Recuperación (Avg)</span>
+                                <div className="flex flex-col items-center gap-1">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className={`text-4xl font-black tracking-tighter ${!recoverySpeed.averageDays ? 'text-primary/20' : 'text-primary'}`}>
+                                            {recoverySpeed.averageDays || '0.0'}
+                                        </span>
+                                        <span className="text-xs font-bold text-tertiary uppercase">Días</span>
+                                    </div>
+                                    {!recoverySpeed.averageDays && (
+                                        <span className="text-[8px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-2 py-0.5 rounded-full">
+                                            {recoverySpeed.isInCrisis ? 'Crisis Detectada' : 'Calibrando Primer Ciclo'}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="mt-4 flex items-center gap-2">
+                                    <div className={`w-1.5 h-1.5 rounded-full ${recoverySpeed.isInCrisis ? 'bg-error animate-pulse' : 'bg-success'}`}></div>
+                                    <p className="text-[10px] font-bold text-tertiary uppercase tracking-widest leading-none">
+                                        {recoverySpeed.isInCrisis
+                                            ? `Crisis Actual: ${recoverySpeed.currentCrisisDuration}d`
+                                            : 'Sistema en Equilibrio'}
+                                    </p>
+                                </div>
+                            </Card>
+                        )}
                     </div>
                 )}
 
-                <div className="mt-8 pt-8 border-t border-border/30">
-                    <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse"></span>
-                        Simulación de Escenarios (Tester)
+                <div className="mt-12 pt-8 border-t border-white/5">
+                    <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+                        Laboratorio de Simulación Bio-Sistémica
                     </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <button
-                            onClick={() => simulateScenario('ESTABLE')}
-                            disabled={isSimulating}
-                            className="bg-success/10 hover:bg-success/20 text-success text-[11px] font-bold py-3 px-4 rounded-2xl transition-all border border-success/20"
-                        >
-                            Escenario: Estable
-                        </button>
-                        <button
-                            onClick={() => simulateScenario('ALERTA')}
-                            disabled={isSimulating}
-                            className="bg-warning/10 hover:bg-warning/20 text-warning text-[11px] font-bold py-3 px-4 rounded-2xl transition-all border border-warning/20"
-                        >
-                            Escenario: Alerta
-                        </button>
-                        <button
-                            onClick={() => simulateScenario('INESTABLE')}
-                            disabled={isSimulating}
-                            className="bg-error/10 hover:bg-error/20 text-error text-[11px] font-bold py-3 px-4 rounded-2xl transition-all border border-error/20"
-                        >
-                            Escenario: Recuperación
-                        </button>
-                        <button
-                            onClick={() => simulateScenario('OLVIDADO')}
-                            disabled={isSimulating}
-                            className="bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 text-[11px] font-bold py-3 px-4 rounded-2xl transition-all border border-indigo-500/20"
-                        >
-                            Escenario: Día Olvidado
-                        </button>
+                    <div className="grid grid-cols-1 gap-3">
+                        {[
+                            { id: 'RESILIENTE', label: 'Historial Resiliente', desc: 'Simula 14 días con 2 ciclos de caída y recuperación exitosa.', color: 'success' },
+                            { id: 'BURN_OUT', label: 'Agotamiento Crónico', desc: '14 días de inestabilidad profunda sin retorno al equilibrio.', color: 'error' },
+                            { id: 'VOLATIL', label: 'Patrón de Inestabilidad', desc: 'Ciclos intermitentes de estrés cada 72 horas.', color: 'warning' },
+                            { id: 'OPTIMO', label: 'Reloj Suizo (Ideal)', desc: '100% de consistencia en estado de Expansión/Sostén.', color: 'accent' },
+                            { id: 'LIMPIAR', label: 'Reiniciar Historial', desc: 'Elimina todos los registros para empezar de cero.', color: 'secondary' }
+                        ].map((btn) => (
+                            <button
+                                key={btn.id}
+                                onClick={() => simulateScenario(btn.id as any)}
+                                disabled={isSimulating}
+                                className="bg-surface/40 hover:bg-surface text-left p-4 rounded-3xl transition-all border border-white/5 group active:scale-[0.98]"
+                            >
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className={`text-[11px] font-black uppercase tracking-widest text-${btn.color} group-hover:translate-x-1 transition-transform`}>
+                                        {btn.label}
+                                    </span>
+                                    <div className={`w-1.5 h-1.5 rounded-full bg-${btn.color}/30 group-hover:bg-${btn.color} transition-colors`}></div>
+                                </div>
+                                <p className="text-[10px] text-tertiary leading-relaxed">
+                                    {btn.desc}
+                                </p>
+                            </button>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -245,9 +274,15 @@ export function Coherencia() {
                 imageSrc={protocolAsset}
             />
 
-            <p className="text-center text-[10px] text-tertiary mt-12 uppercase tracking-widest opacity-50">
-                Análisis Cognitivo-Motor • MVP1
+            <p className="text-center text-[10px] text-tertiary/40 mt-16 uppercase tracking-[0.3em] font-bold">
+                Motor de Coherencia • v2.0 • Lab Mode
             </p>
         </div>
     );
 }
+
+const Zap = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+);

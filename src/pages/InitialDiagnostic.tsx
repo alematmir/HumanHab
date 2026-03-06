@@ -10,7 +10,9 @@ interface Question {
     title: string;
     description: string;
     icon: React.ReactNode;
-    options: { label: string; value: any; description?: string }[];
+    options?: { label: string; value: any; description?: string }[];
+    type?: 'choice' | 'text';
+    placeholder?: string;
 }
 
 export function InitialDiagnostic() {
@@ -62,6 +64,22 @@ export function InitialDiagnostic() {
                 { label: 'Media (4-7)', value: 6, description: 'Funciono bien pero con altibajos.' },
                 { label: 'Óptima (8-10)', value: 9, description: 'Me siento con excedente para empujar.' }
             ]
+        },
+        {
+            id: 'anchor_low',
+            title: 'Ancla de Agotamiento (Nivel 2)',
+            description: '¿Qué síntomas físicos o mentales experimentas cuando tu energía está al mínimo?',
+            icon: <Zap className="w-8 h-8 text-error/60" />,
+            type: 'text',
+            placeholder: 'Ej: Niebla mental, irritabilidad, pesadez...'
+        },
+        {
+            id: 'anchor_high',
+            title: 'Ancla de Fluidez (Nivel 9)',
+            description: '¿Cómo se siente tu mejor versión en un día de enfoque total?',
+            icon: <Zap className="w-8 h-8 text-success/60" />,
+            type: 'text',
+            placeholder: 'Ej: Claridad mental, enfoque total, nitidez...'
         },
         {
             id: 'resilience',
@@ -125,24 +143,27 @@ export function InitialDiagnostic() {
                 user_id: user.id,
                 first_name: user?.user_metadata?.first_name || '',
                 last_name: user?.user_metadata?.last_name || '',
-                display_name: displayName,
                 level,
                 habit_limit: habitLimit,
+                anchor_2_symptoms: answers.anchor_low || '',
+                anchor_9_symptoms: answers.anchor_high || '',
                 diagnostic_answers: answers,
-                created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
 
             const { error } = await supabase
                 .from('user_profiles')
-                .upsert(profileData);
+                .upsert(profileData, { onConflict: 'user_id' });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase Error:', error);
+                throw new Error(error.message);
+            }
 
             navigate('/setup');
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error saving diagnostic:', err);
-            alert('Error al guardar tu perfil. Inténtalo de nuevo.');
+            alert(`Error al guardar: ${err.message || 'Inténtalo de nuevo'}`);
         } finally {
             setIsSaving(false);
         }
@@ -224,33 +245,55 @@ export function InitialDiagnostic() {
                         </div>
 
                         <div className="space-y-3">
-                            {questions[step - 1].options.map((option, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => selectOption(questions[step - 1].id, option.value)}
-                                    className={`w-full text-left p-5 rounded-3xl border transition-all duration-200 group flex items-center justify-between
-                                        ${answers[questions[step - 1].id] === option.value
-                                            ? 'bg-accent/10 border-accent/40 shadow-sm'
-                                            : 'bg-surface border-transparent hover:border-accent/20 hover:bg-accent/[0.02]'}`}
-                                >
-                                    <div>
-                                        <div className={`font-bold text-sm mb-1 ${answers[questions[step - 1].id] === option.value ? 'text-accent' : 'text-primary'}`}>
-                                            {option.label}
-                                        </div>
-                                        {option.description && (
-                                            <div className="text-[11px] text-tertiary tracking-tight leading-none group-hover:text-secondary transition-colors">
-                                                {option.description}
+                            {questions[step - 1].type === 'text' ? (
+                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                    <textarea
+                                        autoFocus
+                                        value={answers[questions[step - 1].id] || ''}
+                                        onChange={(e) => setAnswers(prev => ({ ...prev, [questions[step - 1].id]: e.target.value }))}
+                                        placeholder={questions[step - 1].placeholder}
+                                        className="w-full h-40 bg-surface border-transparent rounded-[32px] p-6 text-primary placeholder:text-tertiary focus:outline-none focus:ring-2 focus:ring-accent/20 transition-all font-medium resize-none shadow-inner"
+                                    />
+                                    <Button
+                                        onClick={handleNext}
+                                        disabled={!answers[questions[step - 1].id]?.trim()}
+                                        className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl bg-accent hover:bg-accent/90 border-transparent text-white"
+                                    >
+                                        Continuar
+                                    </Button>
+                                    <p className="text-center text-[10px] text-tertiary/60 uppercase tracking-widest font-bold">
+                                        Presiona continuar para avanzar
+                                    </p>
+                                </div>
+                            ) : (
+                                questions[step - 1].options?.map((option, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => selectOption(questions[step - 1].id, option.value)}
+                                        className={`w-full text-left p-5 rounded-3xl border transition-all duration-200 group flex items-center justify-between
+                                            ${answers[questions[step - 1].id] === option.value
+                                                ? 'bg-accent/10 border-accent/40 shadow-sm'
+                                                : 'bg-surface border-transparent hover:border-accent/20 hover:bg-accent/[0.02]'}`}
+                                    >
+                                        <div>
+                                            <div className={`font-bold text-sm mb-1 ${answers[questions[step - 1].id] === option.value ? 'text-accent' : 'text-primary'}`}>
+                                                {option.label}
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className={`w-6 h-6 rounded-full border flex items-center justify-center transition-all 
-                                        ${answers[questions[step - 1].id] === option.value
-                                            ? 'bg-accent border-accent text-white scale-110'
-                                            : 'border-tertiary/20 group-hover:border-accent/40'}`}>
-                                        {answers[questions[step - 1].id] === option.value && <Zap className="w-3 h-3 fill-current" />}
-                                    </div>
-                                </button>
-                            ))}
+                                            {option.description && (
+                                                <div className="text-[11px] text-tertiary tracking-tight leading-none group-hover:text-secondary transition-colors">
+                                                    {option.description}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className={`w-6 h-6 rounded-full border flex items-center justify-center transition-all 
+                                            ${answers[questions[step - 1].id] === option.value
+                                                ? 'bg-accent border-accent text-white scale-110'
+                                                : 'border-tertiary/20 group-hover:border-accent/40'}`}>
+                                            {answers[questions[step - 1].id] === option.value && <Zap className="w-3 h-3 fill-current" />}
+                                        </div>
+                                    </button>
+                                ))
+                            )}
                         </div>
 
                         {step === questions.length && Object.keys(answers).length === questions.length && (

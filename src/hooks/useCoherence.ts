@@ -1,12 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
+import { habitService } from '../lib/habitService';
 
 export interface CoherenceStatus {
     state: string;
     color: string;
     protocol: string;
     message: string;
+}
+
+export interface RecoverySpeedData {
+    averageDays: string | null;
+    totalCycles: number;
+    currentCrisisDuration: number;
+    isInCrisis: boolean;
 }
 
 export function useCoherence() {
@@ -17,9 +25,11 @@ export function useCoherence() {
         protocol: 'Mantenimiento',
         message: 'El sistema mantiene la sincronización entre los hábitos registrados y los ciclos biológicos.'
     });
+    const [recoverySpeed, setRecoverySpeed] = useState<RecoverySpeedData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const analyze = useCallback((data: any[]) => {
+        // ... (existing analysis logic remains the same)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -43,33 +53,61 @@ export function useCoherence() {
                     state: 'Atención',
                     color: 'warning',
                     protocol: 'Desincronización',
-                    message: 'Detectamos un vacío ayer. Es vital retomar hoy para mantener la inercia del hábito.'
+                    message: 'Detectamos un vacío ayer. Es vital retomar hoy para mantener la inercia del sistema.'
                 };
             }
 
+            if (data[0].operational_state) {
+                const state = data[0].operational_state;
+                if (state === 'Riesgo') {
+                    return {
+                        state: 'Riesgo',
+                        color: 'error',
+                        protocol: 'Protección',
+                        message: 'Se ha detectado una fuga de enfoque. Se recomienda simplificar hábitos al 10% para no romper el hilo.'
+                    };
+                }
+                if (state === 'Regulación') {
+                    return {
+                        state: 'Regulación',
+                        color: 'warning',
+                        protocol: 'Recuperación',
+                        message: 'Tu sistema está bajo estrés. Prioriza la estabilidad y el descanso sobre la expansión.'
+                    };
+                }
+                if (state === 'Expansión') {
+                    return {
+                        state: 'Expansión',
+                        color: 'success',
+                        protocol: 'Mantenimiento',
+                        message: 'Sincronización óptima detectada. Es un buen momento para consolidar o expandir.'
+                    };
+                }
+            }
+
             if (data.length >= 2) {
-                const consecutiveDifficulty = data.every(log => log.status === 'DIFICULTAD');
-                if (consecutiveDifficulty) {
+                const consecutiveHighFriction = data.every(s => s.friction >= 7);
+                if (consecutiveHighFriction) {
                     return {
                         state: 'Inestable',
                         color: 'error',
                         protocol: 'Recuperación',
-                        message: 'Se han detectado 2 o más días consecutivos donde te ha costado completar el hábito. Se recomienda activar el protocolo de regulación.'
+                        message: 'Se han detectado 2 o más días consecutivos de alta fricción ambiental. Activa protocolos de protección.'
                     };
-                } else if (data[0].status === 'DIFICULTAD') {
+                } else if (data[0].friction >= 7 || data[0].energy <= 3) {
                     return {
                         state: 'Atención',
                         color: 'warning',
                         protocol: 'Alerta',
-                        message: 'El registro de hoy muestra que te ha costado un poco. Monitorea tu energía mañana para mantener la sincronización.'
+                        message: 'El balance de hoy muestra alta fricción o baja energía. Monitorea tu estado mañana.'
                     };
                 }
-            } else if (data[0].status === 'DIFICULTAD') {
+            } else if (data[0].friction >= 7) {
                 return {
                     state: 'Atención',
                     color: 'warning',
                     protocol: 'Monitoreo',
-                    message: 'El registro inicial indica dificultad. Mantente atento al balance energético para consolidar el hábito.'
+                    message: 'Fricción inicial elevada detectada. Enfócate en la simplicidad para consolidar tus hábitos.'
                 };
             }
         }
@@ -79,7 +117,7 @@ export function useCoherence() {
             color: 'success',
             protocol: 'Mantenimiento',
             message: data?.length === 0
-                ? 'Bienvenido. Comienza tu registro diario para habilitar el análisis de coherencia.'
+                ? 'Bienvenido. Completa tu primer registro diario para habilitar el análisis de coherencia.'
                 : 'El sistema mantiene la sincronización entre los hábitos registrados y los ciclos biológicos.'
         };
     }, []);
@@ -88,8 +126,9 @@ export function useCoherence() {
         if (!user) return;
         setIsLoading(true);
         try {
+            // 1. Fetch Basic Status
             const { data, error } = await supabase
-                .from('daily_logs')
+                .from('daily_summaries')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('date', { ascending: false })
@@ -97,6 +136,10 @@ export function useCoherence() {
 
             if (error) throw error;
             setStatus(analyze(data || []));
+
+            // 2. Fetch Recovery Speed
+            const rsData = await habitService.calculateRecoverySpeed(user.id);
+            setRecoverySpeed(rsData);
         } catch (err) {
             console.error('Error fetching coherence status:', err);
         } finally {
@@ -108,5 +151,5 @@ export function useCoherence() {
         fetchStatus();
     }, [fetchStatus]);
 
-    return { status, isLoading, refetch: fetchStatus };
+    return { status, recoverySpeed, isLoading, refetch: fetchStatus };
 }
