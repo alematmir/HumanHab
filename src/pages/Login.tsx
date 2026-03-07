@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock } from 'lucide-react';
 import iconHumanHab from '../assets/logohuman.png.png';
+import iconHumanHab2 from '../assets/IconHumanHab.png';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { supabase } from '../lib/supabase';
@@ -39,7 +40,7 @@ export function Login() {
             <div className="w-full max-w-sm flex flex-col items-center">
                 {/* Logo / Icon Area */}
                 <div className="w-16 h-16 bg-surface rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-border overflow-hidden p-2">
-                    <img src={iconHumanHab} alt="HumanHab Icon" className="w-full h-full object-contain" />
+                    <img src={iconHumanHab2} alt="HumanHab Icon" className="w-full h-full object-contain" />
                 </div>
 
                 <h1 className="text-4xl font-bold tracking-tight text-primary mb-1">HumanHab</h1>

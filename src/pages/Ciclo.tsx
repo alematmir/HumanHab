@@ -190,19 +190,17 @@ export function Ciclo() {
         return () => clearInterval(interval);
     }, [todayStr]);
 
-    const handleToggleHabit = async (habitId: string) => {
+    const handleSetHabitStatus = async (habitId: string, status: boolean) => {
         if (isDayClosed || !user) return;
-
-        const currentLog = habitLogs[habitId];
-        const newStatus = !currentLog?.is_completed;
 
         try {
             const updatedLog = await habitService.upsertHabitLog({
                 habit_id: habitId,
                 user_id: user.id,
                 date: todayStr,
-                friction: 5, // Default for now
-                is_completed: newStatus
+                friction: habitLogs[habitId]?.friction || 5,
+                is_completed: status,
+                completed_quantity: habitLogs[habitId]?.completed_quantity || 0
             });
 
             setHabitLogs(prev => ({
@@ -210,7 +208,7 @@ export function Ciclo() {
                 [habitId]: updatedLog
             }));
         } catch (err) {
-            console.error('Error toggling habit:', err);
+            console.error('Error setting habit status:', err);
         }
     };
 
@@ -326,7 +324,7 @@ export function Ciclo() {
     };
 
     const handleDeleteEnergyEvent = async (id: string) => {
-        // No restriction here anymore, data accuracy is priority
+        // No restriction here anymore, data accuracy is priority even after closure
         try {
             await habitService.deleteEnergyEvent(id);
             setEnergyEvents(prev => prev.filter(e => e.id !== id));
@@ -405,13 +403,14 @@ export function Ciclo() {
 
                     {habits.map((habit) => {
                         const log = habitLogs[habit.id];
-                        const isCompleted = log?.is_completed;
-                        const hasInteracted = !!log;
+                        const isCompleted = log?.is_completed === true;
+                        const isFailed = log?.is_completed === false;
+                        const hasInteracted = log?.is_completed !== undefined && log?.is_completed !== null;
 
                         return (
                             <Card key={habit.id} className={`rounded-3xl border-transparent p-4 flex items-center gap-4 transition-all duration-300
                             ${isDayClosed ? 'opacity-80' : ''}
-                            ${isCompleted ? 'bg-accent/5 ring-2 ring-accent' : 'bg-surface'}`}>
+                            ${isCompleted ? 'bg-accent/5 ring-2 ring-accent' : isFailed ? 'bg-error/5 ring-2 ring-error' : 'bg-surface'}`}>
 
                                 <div
                                     onClick={() => setSelectedHabit(habit)}
@@ -438,22 +437,22 @@ export function Ciclo() {
                                             </span>
                                         )}
                                     </div>
-                                    <p className={`text-[11px] truncate font-medium ${isCompleted ? 'text-accent' : 'text-tertiary'}`}>
-                                        {hasInteracted ? (isCompleted ? '¡Lo lograste!' : 'Se me complicó') : 'Estado: Pendiente'}
+                                    <p className={`text-[11px] truncate font-medium ${isCompleted ? 'text-accent' : isFailed ? 'text-error' : 'text-tertiary'}`}>
+                                        {isCompleted ? '¡Lo lograste!' : isFailed ? 'Se me complicó' : 'Estado: Pendiente'}
                                     </p>
                                 </div>
 
                                 {!isDayClosed && (
                                     <div className="flex gap-2">
                                         <button
-                                            onClick={() => handleToggleHabit(habit.id)}
+                                            onClick={() => handleSetHabitStatus(habit.id, false)}
                                             className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all
-                                            ${hasInteracted && !isCompleted ? 'bg-error text-white' : 'bg-main text-tertiary/40 hover:text-error hover:bg-error/10'}`}
+                                            ${isFailed ? 'bg-error text-white' : 'bg-main text-tertiary/40 hover:text-error hover:bg-error/10'}`}
                                         >
                                             <XCircle className="w-5 h-5" />
                                         </button>
                                         <button
-                                            onClick={() => handleToggleHabit(habit.id)}
+                                            onClick={() => handleSetHabitStatus(habit.id, true)}
                                             className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all
                                             ${isCompleted ? 'bg-success text-white' : 'bg-main text-tertiary/40 hover:text-success hover:bg-success/10'}`}
                                         >
@@ -509,15 +508,13 @@ export function Ciclo() {
                     <div className="pt-4 border-t border-white/5">
                         <div className="flex items-center justify-between px-1 mb-4">
                             <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Eventos del Día</h2>
-                            {!isDayClosed && (
-                                <button
-                                    onClick={() => setShowEventModal(true)}
-                                    className="text-[10px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-accent/20 transition-all"
-                                >
-                                    <Plus className="w-3 h-3" />
-                                    Log de Energía
-                                </button>
-                            )}
+                            <button
+                                onClick={() => setShowEventModal(true)}
+                                className="text-[10px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-accent/20 transition-all"
+                            >
+                                <Plus className="w-3 h-3" />
+                                Log de Energía
+                            </button>
                         </div>
 
                         {energyEvents.length > 0 ? (
@@ -532,14 +529,12 @@ export function Ciclo() {
                                             {event.type === 'recarga' ? <Zap className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                                         </div>
                                         <span className="flex-1 text-xs text-secondary font-medium">{event.label}</span>
-                                        {!isDayClosed && (
-                                            <button
-                                                onClick={() => handleDeleteEnergyEvent(event.id)}
-                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-tertiary hover:text-error hover:bg-error/10 transition-all"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
-                                        )}
+                                        <button
+                                            onClick={() => handleDeleteEnergyEvent(event.id)}
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-tertiary hover:text-error hover:bg-error/10 transition-all"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
                                     </div>
                                 ))}
                             </div>
@@ -631,8 +626,12 @@ export function Ciclo() {
                                 <h2 className="text-2xl font-bold text-primary mb-2 tracking-tight">{selectedHabit.title}</h2>
                                 <div className="flex items-center gap-2">
                                     <span className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-sm
-                                    ${habitLogs[selectedHabit.id]?.is_completed ? 'bg-success/90 text-white' : 'bg-surface border border-white/5 text-tertiary'}`}>
-                                        {habitLogs[selectedHabit.id]?.is_completed ? 'Completado hoy' : 'Pendiente'}
+                                    ${habitLogs[selectedHabit.id]?.is_completed === true ? 'bg-success/90 text-white' :
+                                            habitLogs[selectedHabit.id]?.is_completed === false ? 'bg-error/90 text-white' :
+                                                'bg-surface border border-white/5 text-tertiary'}`}>
+                                        {habitLogs[selectedHabit.id]?.is_completed === true ? 'Completado hoy' :
+                                            habitLogs[selectedHabit.id]?.is_completed === false ? 'No se logró' :
+                                                'Pendiente'}
                                     </span>
                                 </div>
                             </div>
@@ -703,7 +702,7 @@ export function Ciclo() {
                                                         user_id: user.id,
                                                         date: todayStr,
                                                         friction: 5,
-                                                        is_completed: false,
+                                                        is_completed: null,
                                                         completed_quantity: 0
                                                     };
                                                     // Auto complete removed. User must click checkmark on main list.
@@ -739,7 +738,7 @@ export function Ciclo() {
                                                         user_id: user.id,
                                                         date: todayStr,
                                                         friction: val,
-                                                        is_completed: false,
+                                                        is_completed: null,
                                                         completed_quantity: 0
                                                     };
 
