@@ -76,12 +76,19 @@
 
     /* Premium Glassmorphism */
     .glass-card {
-        @apply bg-card/40 backdrop-blur-md border border-white/5 rounded-2xl;
+        background-color: rgb(var(--color-bg-card) / 0.4);
+        @apply backdrop-blur-md border border-white/5 rounded-2xl;
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     }
 
     .glass-button {
-        @apply bg-accent/20 hover:bg-accent/30 backdrop-blur-sm border border-accent/30 rounded-xl transition-all duration-300;
+        background-color: rgb(var(--color-brand-accent) / 0.2);
+        border: 1px solid rgb(var(--color-brand-accent) / 0.3);
+        @apply backdrop-blur-sm rounded-xl transition-all duration-300;
+    }
+
+    .glass-button:hover {
+        background-color: rgb(var(--color-brand-accent) / 0.3);
     }
 
     /* Dynamic Gradients for states */
