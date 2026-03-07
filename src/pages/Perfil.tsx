@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { ChevronRight, LogOut, Sun, Moon, User, Settings, Layers, ShieldCheck, AlertCircle } from 'lucide-react';
+import { ChevronRight, LogOut, Sun, Moon, User, Settings, Layers, ShieldCheck, AlertCircle, BookOpen, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { habitService } from '../lib/habitService';
 import { Card } from '../components/ui/Card';
@@ -19,6 +20,7 @@ export function Perfil() {
     const [isLight, setIsLight] = useState(() =>
         typeof document !== 'undefined' ? document.documentElement.classList.contains('light') : false
     );
+    const [showManual, setShowManual] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -147,6 +149,17 @@ export function Perfil() {
                             </div>
                             <ChevronRight className="w-4 h-4 text-tertiary" />
                         </button>
+
+                        <button
+                            onClick={() => setShowManual(true)}
+                            className="w-full flex items-center justify-between p-5 text-left hover:bg-white/[0.02] transition-colors group"
+                        >
+                            <div className="flex items-center gap-4">
+                                <BookOpen className="w-5 h-5 text-accent opacity-50" />
+                                <span className="text-sm font-bold text-primary">Manual de Operaciones</span>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-tertiary" />
+                        </button>
                     </div>
                 </section>
 
@@ -237,8 +250,85 @@ export function Perfil() {
                 </div>
             )}
 
+            {/* Manual Modal */}
+            <AnimatePresence>
+                {showManual && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-main/95 backdrop-blur-xl"
+                    >
+                        <motion.div
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            className="w-full max-w-xl bg-surface sm:rounded-[40px] rounded-t-[40px] p-8 border-t sm:border border-white/5 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar"
+                        >
+                            <button
+                                onClick={() => setShowManual(false)}
+                                className="absolute top-6 right-6 p-2 rounded-2xl bg-main/50 text-tertiary hover:text-primary transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
+                            <div className="mb-8">
+                                <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mb-6">
+                                    <BookOpen className="w-6 h-6 text-accent" />
+                                </div>
+                                <h2 className="text-2xl font-bold text-primary mb-2">Manual de Operaciones</h2>
+                                <p className="text-tertiary text-sm">Protocolo Bio-Conductual HumanHab</p>
+                            </div>
+
+                            <div className="space-y-8 pb-12">
+                                <section>
+                                    <h3 className="text-xs font-bold text-accent uppercase tracking-widest mb-3">01. La Filosofía</h3>
+                                    <p className="text-sm text-secondary leading-relaxed">
+                                        HumanHab no es un rastreador de tareas, es un **Guardián de tu Energía**. El éxito de tus hábitos no depende de tu voluntad, sino de tu vitalidad biológica actual.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-xs font-bold text-accent uppercase tracking-widest mb-3">02. Nivel de Vitalidad</h3>
+                                    <p className="text-sm text-secondary leading-relaxed">
+                                        Se mide del 1 al 10. Tu **Baseline** es tu promedio de los últimos 14 días.
+                                        Cuando estás por encima, es momento de **Expansión**. Cuando estás por debajo, el sistema prioriza la **Recuperación**.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-xs font-bold text-accent uppercase tracking-widest mb-3">03. El Índice de Fricción</h3>
+                                    <p className="text-sm text-secondary leading-relaxed">
+                                        Registra qué tan difícil fue ejecutar un hábito. Una fricción alta con energía baja es el primer síntoma de una **Disfunción en Cascada**.
+                                    </p>
+                                </section>
+
+                                <section>
+                                    <h3 className="text-xs font-bold text-accent uppercase tracking-widest mb-3">04. El Escudo de Coherencia</h3>
+                                    <p className="text-sm text-secondary leading-relaxed">
+                                        Si el sistema detecta 2 días consecutivos de caída de vitalidad, el **Escudo** se activa automáticamente:
+                                        <br /><br />
+                                        • Bloquea la creación de nuevos hábitos.
+                                        <br />
+                                        • Sugiere (o impone) niveles de rigor bajos.
+                                        <br />
+                                        • Te protege del burnout protegiendo tu "Ego" de la falla.
+                                    </p>
+                                </section>
+
+                                <section className="p-4 bg-accent/5 rounded-2xl border border-accent/10">
+                                    <p className="text-[11px] text-accent/80 font-medium leading-relaxed italic text-center">
+                                        "No somos esclavos de nuestras metas, sino arquitectos de nuestros ritmos."
+                                    </p>
+                                </section>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <div className="mt-16 text-center">
-                <p className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em]">HumanHab MVP2 • v2.0.0</p>
+                <p className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em]">HumanHab MVP3 • v2.1.0</p>
                 <p className="text-[9px] text-tertiary/40 mt-1 uppercase tracking-widest italic">Adaptive Bio-Hacking Interface</p>
             </div>
         </div>

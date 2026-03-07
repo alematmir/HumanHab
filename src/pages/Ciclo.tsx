@@ -26,6 +26,7 @@ import {
     Coffee,
     Sun
 } from 'lucide-react';
+import { OnboardingTutorial } from '../components/ui/OnboardingTutorial';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Slider } from '../components/ui/Slider';
@@ -351,568 +352,571 @@ export function Ciclo() {
     }
 
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col min-h-[calc(100vh-120px)] animate-in fade-in duration-500 pb-20"
-        >
-            <header className="flex items-center justify-between mb-8 mt-2">
-                <button className="p-2 -ml-2 text-primary hover:text-accent transition-colors">
-                    <Calendar className="w-6 h-6" />
-                </button>
-                <div className="text-center">
-                    <h1 className="text-lg font-bold text-primary tracking-tight uppercase">Hábitos de Hoy</h1>
-                    <p className="text-[10px] text-tertiary font-bold uppercase tracking-widest">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                </div>
-                <button className="p-2 -mr-2 text-primary hover:text-accent transition-colors">
-                    <Bell className="w-6 h-6" />
-                </button>
-            </header>
-
-            {isCalibrating && !isDayClosed && (
-                <div className="mb-6 mx-1 px-4 py-3 bg-accent/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500 shadow-sm border border-transparent">
-                    <Sparkles className="w-4 h-4 text-accent animate-pulse shrink-0" />
-                    <div>
-                        <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Sincronización Biográfica</p>
-                        <p className="text-[9px] text-tertiary font-medium">HumanHab está aprendiendo tus ritmos. Las intervenciones se activarán en unos días.</p>
+        <>
+            <OnboardingTutorial />
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col min-h-[calc(100vh-120px)] animate-in fade-in duration-500 pb-20"
+            >
+                <header className="flex items-center justify-between mb-8 mt-2">
+                    <button className="p-2 -ml-2 text-primary hover:text-accent transition-colors">
+                        <Calendar className="w-6 h-6" />
+                    </button>
+                    <div className="text-center">
+                        <h1 className="text-lg font-bold text-primary tracking-tight uppercase">Hábitos de Hoy</h1>
+                        <p className="text-[10px] text-tertiary font-bold uppercase tracking-widest">{new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                     </div>
-                </div>
-            )}
+                    <button className="p-2 -mr-2 text-primary hover:text-accent transition-colors">
+                        <Bell className="w-6 h-6" />
+                    </button>
+                </header>
 
-            {detectAnomalies() && !isDayClosed && (
-                <div className="mb-6 mx-1 p-4 bg-accent/5 border border-accent/20 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
-                    <Zap className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-                    <div>
-                        <h4 className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">Detección de Anomalía: {detectAnomalies()?.type}</h4>
-                        <p className="text-[11px] text-primary italic leading-relaxed">
-                            "{detectAnomalies()?.message}"
-                        </p>
+                {isCalibrating && !isDayClosed && (
+                    <div className="mb-6 mx-1 px-4 py-3 bg-accent/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500 shadow-sm border border-transparent">
+                        <Sparkles className="w-4 h-4 text-accent animate-pulse shrink-0" />
+                        <div>
+                            <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Sincronización Biográfica</p>
+                            <p className="text-[9px] text-tertiary font-medium">HumanHab está aprendiendo tus ritmos. Las intervenciones se activarán en unos días.</p>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
 
-            {/* Habit Stack */}
-            <section className="space-y-3 mb-10">
-                <div className="flex items-center justify-between px-1 mb-4">
-                    <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Tus Micro-Intervenciones</h2>
-                    <span className="text-[10px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-2 py-0.5 rounded-full">
-                        {managedCount}/{habits.length} Gestionados
-                    </span>
-                </div>
+                {detectAnomalies() && !isDayClosed && (
+                    <div className="mb-6 mx-1 p-4 bg-accent/5 border border-accent/20 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <Zap className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+                        <div>
+                            <h4 className="text-[10px] font-bold text-accent uppercase tracking-widest mb-1">Detección de Anomalía: {detectAnomalies()?.type}</h4>
+                            <p className="text-[11px] text-primary italic leading-relaxed">
+                                "{detectAnomalies()?.message}"
+                            </p>
+                        </div>
+                    </div>
+                )}
 
-                {habits.map((habit) => {
-                    const log = habitLogs[habit.id];
-                    const isCompleted = log?.is_completed;
-                    const hasInteracted = !!log;
+                {/* Habit Stack */}
+                <section className="space-y-3 mb-10">
+                    <div className="flex items-center justify-between px-1 mb-4">
+                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Tus Micro-Intervenciones</h2>
+                        <span className="text-[10px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-2 py-0.5 rounded-full">
+                            {managedCount}/{habits.length} Gestionados
+                        </span>
+                    </div>
 
-                    return (
-                        <Card key={habit.id} className={`rounded-3xl border-transparent p-4 flex items-center gap-4 transition-all duration-300
+                    {habits.map((habit) => {
+                        const log = habitLogs[habit.id];
+                        const isCompleted = log?.is_completed;
+                        const hasInteracted = !!log;
+
+                        return (
+                            <Card key={habit.id} className={`rounded-3xl border-transparent p-4 flex items-center gap-4 transition-all duration-300
                             ${isDayClosed ? 'opacity-80' : ''}
                             ${isCompleted ? 'bg-accent/5 ring-2 ring-accent' : 'bg-surface'}`}>
 
-                            <div
-                                onClick={() => setSelectedHabit(habit)}
-                                className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors cursor-pointer hover:scale-105 active:scale-95
-                                ${isCompleted ? 'bg-accent text-white shadow-lg' : 'bg-main text-secondary'}`}
-                            >
-                                {React.cloneElement(
-                                    (ICON_MAP[habit.icon] || <Target className="w-6 h-6 text-accent" />) as React.ReactElement<any>,
-                                    { className: `w-6 h-6 ${isCompleted ? 'text-white' : 'text-accent'}` }
-                                )}
-                            </div>
-
-                            <div
-                                onClick={() => setSelectedHabit(habit)}
-                                className="flex-1 min-w-0 cursor-pointer"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <h3 className={`font-bold text-sm truncate text-primary`}>
-                                        {habit.title}
-                                    </h3>
-                                    {protectionActive && (
-                                        <span className="text-[7px] font-bold uppercase tracking-widest bg-accent/20 text-accent px-1.5 py-0.5 rounded-md border border-accent/30 animate-pulse">
-                                            Micro-Protocolo
-                                        </span>
-                                    )}
-                                </div>
-                                <p className={`text-[11px] truncate font-medium ${isCompleted ? 'text-accent' : 'text-tertiary'}`}>
-                                    {hasInteracted ? (isCompleted ? '¡Lo lograste!' : 'Se me complicó') : 'Estado: Pendiente'}
-                                </p>
-                            </div>
-
-                            {!isDayClosed && (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => handleToggleHabit(habit.id)}
-                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all
-                                            ${hasInteracted && !isCompleted ? 'bg-error text-white' : 'bg-main text-tertiary/40 hover:text-error hover:bg-error/10'}`}
-                                    >
-                                        <XCircle className="w-5 h-5" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleToggleHabit(habit.id)}
-                                        className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all
-                                            ${isCompleted ? 'bg-success text-white' : 'bg-main text-tertiary/40 hover:text-success hover:bg-success/10'}`}
-                                    >
-                                        <CheckCircle2 className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            )}
-
-                            {isDayClosed && (
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-main
-                                    ${isCompleted ? 'text-success' : 'text-error'}`}>
-                                    {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-                                </div>
-                            )}
-                        </Card>
-                    );
-                })}
-
-                {/* Subtile Expansion Suggestion */}
-                {!isDayClosed && coherenceStatus.state === 'Expansión' && (
-                    <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-500">
-                        {(() => {
-                            const limits: Record<string, number> = {
-                                'Principiante': 2,
-                                'Intermedio': 3,
-                                'Avanzado': 5
-                            };
-                            const limit = limits[userLevel] || 2;
-                            if (habits.length < limit) {
-                                return (
-                                    <button
-                                        onClick={() => navigate('/setup')}
-                                        className="w-full h-14 rounded-[24px] bg-surface flex flex-col items-center justify-center transition-all hover:bg-accent/10 group relative overflow-hidden shadow-sm border border-transparent"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Plus className="w-4 h-4 text-accent" />
-                                            <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
-                                                Carga Óptima: Sumar Hábito
-                                            </span>
-                                        </div>
-                                        <span className="text-[8px] text-tertiary mt-0.5 tracking-wider italic">
-                                            Cupo Disponible: {habits.length}/{limit}
-                                        </span>
-                                    </button>
-                                );
-                            }
-                            return null;
-                        })()}
-                    </div>
-                )}
-
-                {/* Eventos Rápidos */}
-                <div className="pt-4 border-t border-white/5">
-                    <div className="flex items-center justify-between px-1 mb-4">
-                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Eventos del Día</h2>
-                        {!isDayClosed && (
-                            <button
-                                onClick={() => setShowEventModal(true)}
-                                className="text-[10px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-accent/20 transition-all"
-                            >
-                                <Plus className="w-3 h-3" />
-                                Log de Energía
-                            </button>
-                        )}
-                    </div>
-
-                    {energyEvents.length > 0 ? (
-                        <div className="space-y-2">
-                            {energyEvents.map((event) => (
                                 <div
-                                    key={event.id}
-                                    className="flex items-center gap-3 bg-surface/50 border border-white/5 rounded-2xl p-3 animate-in slide-in-from-right duration-300"
+                                    onClick={() => setSelectedHabit(habit)}
+                                    className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors cursor-pointer hover:scale-105 active:scale-95
+                                ${isCompleted ? 'bg-accent text-white shadow-lg' : 'bg-main text-secondary'}`}
                                 >
-                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center
-                                        ${event.type === 'recarga' ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
-                                        {event.type === 'recarga' ? <Zap className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                                    </div>
-                                    <span className="flex-1 text-xs text-secondary font-medium">{event.label}</span>
-                                    {!isDayClosed && (
-                                        <button
-                                            onClick={() => handleDeleteEnergyEvent(event.id)}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-tertiary hover:text-error hover:bg-error/10 transition-all"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
+                                    {React.cloneElement(
+                                        (ICON_MAP[habit.icon] || <Target className="w-6 h-6 text-accent" />) as React.ReactElement<any>,
+                                        { className: `w-6 h-6 ${isCompleted ? 'text-white' : 'text-accent'}` }
                                     )}
                                 </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-[11px] text-tertiary text-center italic py-2">No hay eventos registrados.</p>
-                    )}
-                </div>
-            </section>
 
-            {/* Day Summary */}
-            <section className="space-y-6">
-                <div className="px-1 border-t border-surface pt-8">
-                    <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-6">Balance de Energía & Estado</h2>
-
-                    <div className="space-y-8">
-                        <Card className="rounded-3xl p-6 bg-surface border-transparent">
-                            <Slider
-                                label="Nivel de Vitalidad"
-                                value={summary.energy}
-                                onChange={(val) => setSummary(prev => ({ ...prev, energy: val }))}
-                                colorClass="bg-success/80"
-                                isDynamic={true}
-                                disabled={isDayClosed}
-                            />
-                        </Card>
-
-                        <Card className="rounded-3xl p-6 bg-surface border-transparent">
-                            <Slider
-                                label="Fricción de Hoy"
-                                value={summary.friction}
-                                onChange={(val) => setSummary(prev => ({ ...prev, friction: val }))}
-                                colorClass="bg-accent"
-                                disabled={isDayClosed}
-                            />
-                        </Card>
-
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-tertiary uppercase tracking-widest px-2">Nota del Ciclo</label>
-                            <textarea
-                                value={summary.note}
-                                onChange={(e) => setSummary(prev => ({ ...prev, note: e.target.value }))}
-                                disabled={isDayClosed}
-                                placeholder="Registra cualquier patrón o pensamiento..."
-                                className="w-full bg-surface border-transparent rounded-2xl p-4 text-sm text-primary placeholder:text-tertiary focus:outline-none focus:ring-1 focus:ring-accent/20 h-24 resize-none transition-all shadow-sm"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <div className="mt-12 sticky bottom-4 z-10 px-1">
-                {!isDayClosed ? (
-                    <Button
-                        onClick={handleCloseDay}
-                        disabled={isSaving || !isFullyManaged}
-                        className={`w-full py-4 text-sm font-bold tracking-widest uppercase rounded-2xl shadow-2xl group flex items-center justify-center gap-2
-                            ${!isFullyManaged ? 'opacity-50 grayscale' : ''}`}
-                    >
-                        {isSaving ? 'Sincronizando...' : (
-                            <>
-                                {isFullyManaged ? 'Cerrar Balance y Registro Final' : `Aún te quedan gestionar ${habits.length - managedCount} hábitos para cerrar el día`}
-                                <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                            </>
-                        )}
-                    </Button>
-                ) : (
-                    <div className="w-full py-4 bg-zinc-900 border border-white/5 rounded-2xl flex items-center justify-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Sincronización de Hoy Completada</span>
-                    </div>
-                )}
-            </div>
-
-            {/* Habit Detail Modal */}
-            {selectedHabit && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-main/90 backdrop-blur-sm animate-in fade-in duration-300">
-                    <Card className="w-full max-w-sm max-h-[90vh] overflow-y-auto bg-surface rounded-[40px] p-6 sm:p-8 border-accent/20 shadow-2xl relative custom-scrollbar">
-                        <button
-                            onClick={() => setSelectedHabit(null)}
-                            className="absolute top-6 right-6 p-2 rounded-2xl bg-main/50 text-tertiary hover:text-primary transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-
-                        <div className="flex flex-col items-center text-center mb-8">
-                            <div className="w-20 h-20 rounded-[32px] bg-accent/10 flex items-center justify-center mb-6">
-                                {React.cloneElement((ICON_MAP[selectedHabit.icon] || <Target className="w-10 h-10 text-accent" />) as React.ReactElement<any>, { className: 'w-10 h-10 text-accent' })}
-                            </div>
-                            <h2 className="text-2xl font-bold text-primary mb-2 tracking-tight">{selectedHabit.title}</h2>
-                            <div className="flex items-center gap-2">
-                                <span className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-sm
-                                    ${habitLogs[selectedHabit.id]?.is_completed ? 'bg-success/90 text-white' : 'bg-surface border border-white/5 text-tertiary'}`}>
-                                    {habitLogs[selectedHabit.id]?.is_completed ? 'Completado hoy' : 'Pendiente'}
-                                </span>
-                            </div>
-                        </div>
-
-                        {(() => {
-                            // 1. Check for acute daily anomalies first
-                            const anomaly = detectAnomalies();
-                            let systemOpState = 'Expansión';
-
-                            if (anomaly?.type === 'Fuga de Enfoque' || protectionActive) systemOpState = 'Riesgo';
-                            else if (anomaly?.type === 'Estrés Sistémico') systemOpState = 'Regulación';
-                            else {
-                                // 2. If no acute anomaly today, fall back to the overarching System State (Coherence)
-                                const coh = coherenceStatus.state;
-                                if (coh === 'Cascada') systemOpState = 'Cascada';
-                                else if (coh === 'Riesgo' || coh === 'Inestable') systemOpState = 'Riesgo';
-                                else if (coh === 'Regulación' || coh === 'Atención') systemOpState = 'Regulación';
-                                else systemOpState = 'Expansión';
-                            }
-
-                            let multiplier = 1;
-                            if (systemOpState === 'Cascada') {
-                                // SPRINT 8: Forced Intervention. Ignores user rigidity setting.
-                                multiplier = 0.1;
-                            } else if (systemOpState === 'Riesgo') {
-                                multiplier = rigidityLevel === 1 ? 0.1 : rigidityLevel === 2 ? 0.3 : 0.5;
-                            } else if (systemOpState === 'Regulación') {
-                                multiplier = rigidityLevel === 1 ? 0.3 : rigidityLevel === 2 ? 0.5 : 0.8;
-                            }
-
-                            const baseQuantity = Number(selectedHabit.target_quantity) || 1;
-                            const unit = selectedHabit.target_unit || 'Vez';
-                            const recommendedQuantity = Math.max(1, Math.round(baseQuantity * multiplier));
-
-                            // Let's cap the slider at the exact base target so the user doesn't get confused by allowing 1.5x
-                            const maxSliderVal = baseQuantity;
-
-                            let message = selectedHabit.description || 'Enfoque y coherencia para el micro-protocolo de hoy.';
-                            if (systemOpState === 'Cascada') {
-                                message = `[Alerta de Cascada] El sistema detectó sobrecarga estructural sostenida. Hemos reducido forzosamente tu carga a ${recommendedQuantity} ${unit} para evitar el burnout. Romper esta racha es tu única prioridad hoy.`;
-                            } else if (multiplier < 1) {
-                                message = `[Micro-Intervención] Tu estado de sistema es ${coherenceStatus.state}. El protocolo sugiere reducir la exigencia a ${recommendedQuantity} ${unit}. Si lográs esto, la meta de hoy se considerará completada.`;
-                            }
-
-                            const cLog = habitLogs[selectedHabit.id];
-
-                            return (
-                                <div className="space-y-6">
-                                    <div className="text-center">
-                                        <h4 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-3">Definición Estratégica</h4>
-                                        <p className="text-sm font-medium text-secondary leading-relaxed italic opacity-80">
-                                            "{message}"
-                                        </p>
+                                <div
+                                    onClick={() => setSelectedHabit(habit)}
+                                    className="flex-1 min-w-0 cursor-pointer"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <h3 className={`font-bold text-sm truncate text-primary`}>
+                                            {habit.title}
+                                        </h3>
+                                        {protectionActive && (
+                                            <span className="text-[7px] font-bold uppercase tracking-widest bg-accent/20 text-accent px-1.5 py-0.5 rounded-md border border-accent/30 animate-pulse">
+                                                Micro-Protocolo
+                                            </span>
+                                        )}
                                     </div>
-
-                                    <div className="space-y-4">
-                                        <Slider
-                                            label={`¿Cuánto hiciste? (Sugerido: ${recommendedQuantity} ${unit})`}
-                                            value={cLog?.completed_quantity ?? 0}
-                                            min={0}
-                                            max={maxSliderVal}
-                                            minLabel="0"
-                                            maxLabel={`Max (${maxSliderVal})`}
-                                            onChange={async (val) => {
-                                                if (isDayClosed || !user) return;
-                                                const currentLog = habitLogs[selectedHabit.id] || {
-                                                    habit_id: selectedHabit.id,
-                                                    user_id: user.id,
-                                                    date: todayStr,
-                                                    friction: 5,
-                                                    is_completed: false,
-                                                    completed_quantity: 0
-                                                };
-                                                // Auto complete removed. User must click checkmark on main list.
-                                                // We only save the quantity.
-
-                                                setHabitLogs(prev => ({
-                                                    ...prev,
-                                                    [selectedHabit.id]: { ...currentLog, completed_quantity: val }
-                                                }));
-
-                                                try {
-                                                    await habitService.upsertHabitLog({
-                                                        ...currentLog,
-                                                        completed_quantity: val
-                                                    });
-                                                } catch (err) {
-                                                    console.error('Error updating quantity:', err);
-                                                }
-                                            }}
-                                            colorClass={multiplier < 1 ? "bg-accent/80" : "bg-success/80"}
-                                            disabled={isDayClosed}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <Slider
-                                            label="¿Qué tanto te costó hoy?"
-                                            value={cLog?.friction || 5}
-                                            onChange={async (val) => {
-                                                if (isDayClosed || !user) return;
-                                                const currentLog = habitLogs[selectedHabit.id] || {
-                                                    habit_id: selectedHabit.id,
-                                                    user_id: user.id,
-                                                    date: todayStr,
-                                                    friction: val,
-                                                    is_completed: false,
-                                                    completed_quantity: 0
-                                                };
-
-                                                setHabitLogs(prev => ({
-                                                    ...prev,
-                                                    [selectedHabit.id]: { ...currentLog, friction: val }
-                                                }));
-
-                                                try {
-                                                    await habitService.upsertHabitLog({
-                                                        ...currentLog,
-                                                        friction: val
-                                                    });
-                                                } catch (err) {
-                                                    console.error('Error updating friction:', err);
-                                                }
-                                            }}
-                                            colorClass="bg-accent"
-                                            disabled={isDayClosed}
-                                        />
-                                        <p className="text-[9px] text-tertiary px-1 italic">
-                                            Determina la dificultad sistémica que te generó esta acción.
-                                        </p>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-main/30 rounded-2xl p-4 border border-white/5">
-                                            <h4 className="text-[9px] font-bold text-tertiary uppercase tracking-widest mb-1">Inicio de Hilo</h4>
-                                            <p className="text-xs font-bold text-primary">
-                                                {new Date(selectedHabit.created_at || '').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
-                                            </p>
-                                        </div>
-                                        <div className="bg-main/30 rounded-2xl p-4 border border-white/5">
-                                            <h4 className="text-[9px] font-bold text-tertiary uppercase tracking-widest mb-1">Días Activo</h4>
-                                            <p className="text-xs font-bold text-primary">
-                                                {Math.max(1, Math.floor((new Date().getTime() - new Date(selectedHabit.created_at || '').getTime()) / (1000 * 3600 * 24)))} Días
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-4">
-                                        <Button
-                                            onClick={() => setSelectedHabit(null)}
-                                            className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl"
-                                        >
-                                            Cerrar Detalle
-                                        </Button>
-                                    </div>
+                                    <p className={`text-[11px] truncate font-medium ${isCompleted ? 'text-accent' : 'text-tertiary'}`}>
+                                        {hasInteracted ? (isCompleted ? '¡Lo lograste!' : 'Se me complicó') : 'Estado: Pendiente'}
+                                    </p>
                                 </div>
-                            );
-                        })()}
-                    </Card>
-                </div>
-            )}
 
-            {/* Closure Confirmation Modal */}
-            {showCloseConfirm && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-main/95 backdrop-blur-md animate-in fade-in duration-300">
-                    <Card className="w-full max-w-sm bg-surface rounded-[40px] p-8 border-error/20 shadow-2xl text-center">
-                        <div className="w-16 h-16 rounded-3xl bg-error/10 text-error flex items-center justify-center mx-auto mb-6">
-                            <AlertCircle className="w-8 h-8" />
-                        </div>
-                        <h2 className="text-xl font-bold text-primary mb-3">¿Confirmar Balance Final?</h2>
-                        <p className="text-sm text-tertiary leading-relaxed mb-8">
-                            Una vez cerrado, el registro de hoy será **inmutable** para tus hábitos y balances de energía. Sin embargo, podrás seguir agregando logs de eventos durante el resto del día.
-                        </p>
-                        <div className="space-y-3">
-                            <Button
-                                onClick={executeCloseDay}
-                                className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl bg-error hover:bg-error/90 border-transparent text-white"
-                            >
-                                Confirmar Sincronización
-                            </Button>
-                            <button
-                                onClick={() => setShowCloseConfirm(false)}
-                                className="w-full py-4 text-xs font-bold text-tertiary hover:text-primary uppercase tracking-[0.2em] transition-colors"
-                            >
-                                Volver y Revisar
-                            </button>
-                        </div>
-                    </Card>
-                </div>
-            )}
+                                {!isDayClosed && (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleToggleHabit(habit.id)}
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all
+                                            ${hasInteracted && !isCompleted ? 'bg-error text-white' : 'bg-main text-tertiary/40 hover:text-error hover:bg-error/10'}`}
+                                        >
+                                            <XCircle className="w-5 h-5" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleToggleHabit(habit.id)}
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all
+                                            ${isCompleted ? 'bg-success text-white' : 'bg-main text-tertiary/40 hover:text-success hover:bg-success/10'}`}
+                                        >
+                                            <CheckCircle2 className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                )}
 
-            {/* Event Log Modal */}
-            {showEventModal && (
-                <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-main/90 backdrop-blur-md animate-in fade-in duration-300">
-                    <Card className="w-full max-w-sm bg-surface rounded-[40px] p-8 border border-white/5 shadow-2xl">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-primary">Log de Energía</h2>
-                            <button onClick={() => setShowEventModal(false)} className="text-tertiary hover:text-primary transition-colors">
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
+                                {isDayClosed && (
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-main
+                                    ${isCompleted ? 'text-success' : 'text-error'}`}>
+                                        {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                                    </div>
+                                )}
+                            </Card>
+                        );
+                    })}
 
-                        <div className="space-y-6">
-                            <div className="flex p-1 bg-main rounded-2xl">
+                    {/* Subtile Expansion Suggestion */}
+                    {!isDayClosed && coherenceStatus.state === 'Expansión' && (
+                        <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-500">
+                            {(() => {
+                                const limits: Record<string, number> = {
+                                    'Principiante': 2,
+                                    'Intermedio': 3,
+                                    'Avanzado': 5
+                                };
+                                const limit = limits[userLevel] || 2;
+                                if (habits.length < limit) {
+                                    return (
+                                        <button
+                                            onClick={() => navigate('/setup')}
+                                            className="w-full h-14 rounded-[24px] bg-surface flex flex-col items-center justify-center transition-all hover:bg-accent/10 group relative overflow-hidden shadow-sm border border-transparent"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <Plus className="w-4 h-4 text-accent" />
+                                                <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
+                                                    Carga Óptima: Sumar Hábito
+                                                </span>
+                                            </div>
+                                            <span className="text-[8px] text-tertiary mt-0.5 tracking-wider italic">
+                                                Cupo Disponible: {habits.length}/{limit}
+                                            </span>
+                                        </button>
+                                    );
+                                }
+                                return null;
+                            })()}
+                        </div>
+                    )}
+
+                    {/* Eventos Rápidos */}
+                    <div className="pt-4 border-t border-white/5">
+                        <div className="flex items-center justify-between px-1 mb-4">
+                            <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Eventos del Día</h2>
+                            {!isDayClosed && (
                                 <button
-                                    onClick={() => setEventInput(prev => ({ ...prev, type: 'recarga' }))}
-                                    className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all
-                                        ${eventInput.type === 'recarga' ? 'bg-success text-white shadow-lg' : 'text-tertiary hover:text-secondary'}`}
+                                    onClick={() => setShowEventModal(true)}
+                                    className="text-[10px] font-bold text-accent uppercase tracking-widest bg-accent/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-accent/20 transition-all"
                                 >
-                                    Recarga
+                                    <Plus className="w-3 h-3" />
+                                    Log de Energía
                                 </button>
-                                <button
-                                    onClick={() => setEventInput(prev => ({ ...prev, type: 'friccion' }))}
-                                    className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all
-                                        ${eventInput.type === 'friccion' ? 'bg-error text-white shadow-lg' : 'text-tertiary hover:text-secondary'}`}
-                                >
-                                    Fricción
-                                </button>
+                            )}
+                        </div>
+
+                        {energyEvents.length > 0 ? (
+                            <div className="space-y-2">
+                                {energyEvents.map((event) => (
+                                    <div
+                                        key={event.id}
+                                        className="flex items-center gap-3 bg-surface/50 border border-white/5 rounded-2xl p-3 animate-in slide-in-from-right duration-300"
+                                    >
+                                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center
+                                        ${event.type === 'recarga' ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+                                            {event.type === 'recarga' ? <Zap className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                                        </div>
+                                        <span className="flex-1 text-xs text-secondary font-medium">{event.label}</span>
+                                        {!isDayClosed && (
+                                            <button
+                                                onClick={() => handleDeleteEnergyEvent(event.id)}
+                                                className="w-8 h-8 rounded-lg flex items-center justify-center text-tertiary hover:text-error hover:bg-error/10 transition-all"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
+                        ) : (
+                            <p className="text-[11px] text-tertiary text-center italic py-2">No hay eventos registrados.</p>
+                        )}
+                    </div>
+                </section>
+
+                {/* Day Summary */}
+                <section className="space-y-6">
+                    <div className="px-1 border-t border-surface pt-8">
+                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-6">Balance de Energía & Estado</h2>
+
+                        <div className="space-y-8">
+                            <Card className="rounded-3xl p-6 bg-surface border-transparent">
+                                <Slider
+                                    label="Nivel de Vitalidad"
+                                    value={summary.energy}
+                                    onChange={(val) => setSummary(prev => ({ ...prev, energy: val }))}
+                                    colorClass="bg-success/80"
+                                    isDynamic={true}
+                                    disabled={isDayClosed}
+                                />
+                            </Card>
+
+                            <Card className="rounded-3xl p-6 bg-surface border-transparent">
+                                <Slider
+                                    label="Fricción de Hoy"
+                                    value={summary.friction}
+                                    onChange={(val) => setSummary(prev => ({ ...prev, friction: val }))}
+                                    colorClass="bg-accent"
+                                    disabled={isDayClosed}
+                                />
+                            </Card>
 
                             <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-tertiary uppercase tracking-widest px-1">Detalle del Evento</label>
-                                <input
-                                    autoFocus
-                                    type="text"
-                                    value={eventInput.label}
-                                    onChange={(e) => setEventInput(prev => ({ ...prev, label: e.target.value }))}
-                                    placeholder={eventInput.type === 'recarga' ? "Ej: Caminata solar, Lectura..." : "Ej: Tráfico, Discusión..."}
-                                    className="w-full bg-main border-transparent rounded-2xl p-4 text-sm text-primary placeholder:text-tertiary focus:outline-none focus:ring-1 focus:ring-accent/20 transition-all font-medium"
+                                <label className="text-[10px] font-bold text-tertiary uppercase tracking-widest px-2">Nota del Ciclo</label>
+                                <textarea
+                                    value={summary.note}
+                                    onChange={(e) => setSummary(prev => ({ ...prev, note: e.target.value }))}
+                                    disabled={isDayClosed}
+                                    placeholder="Registra cualquier patrón o pensamiento..."
+                                    className="w-full bg-surface border-transparent rounded-2xl p-4 text-sm text-primary placeholder:text-tertiary focus:outline-none focus:ring-1 focus:ring-accent/20 h-24 resize-none transition-all shadow-sm"
                                 />
                             </div>
-
-                            <Button
-                                onClick={handleLogEnergyEvent}
-                                disabled={!eventInput.label.trim() || isSaving}
-                                className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl border-transparent text-white bg-accent hover:bg-accent/90 disabled:opacity-50"
-                            >
-                                {isSaving ? 'Registrando...' : 'Registrar Evento'}
-                            </Button>
                         </div>
-                    </Card>
+                    </div>
+                </section>
+
+                <div className="mt-12 sticky bottom-4 z-10 px-1">
+                    {!isDayClosed ? (
+                        <Button
+                            onClick={handleCloseDay}
+                            disabled={isSaving || !isFullyManaged}
+                            className={`w-full py-4 text-sm font-bold tracking-widest uppercase rounded-2xl shadow-2xl group flex items-center justify-center gap-2
+                            ${!isFullyManaged ? 'opacity-50 grayscale' : ''}`}
+                        >
+                            {isSaving ? 'Sincronizando...' : (
+                                <>
+                                    {isFullyManaged ? 'Cerrar Balance y Registro Final' : `Aún te quedan gestionar ${habits.length - managedCount} hábitos para cerrar el día`}
+                                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                </>
+                            )}
+                        </Button>
+                    ) : (
+                        <div className="w-full py-4 bg-zinc-900 border border-white/5 rounded-2xl flex items-center justify-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Sincronización de Hoy Completada</span>
+                        </div>
+                    )}
                 </div>
-            )}
 
-            {/* N+1 Intervention Modal */}
-            {pendingIntervention && (
-                <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-main/95 backdrop-blur-xl animate-in fade-in duration-500">
-                    <Card className="w-full max-w-sm bg-surface rounded-[40px] p-8 border-accent/20 shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-accent/20">
-                            <div className="h-full bg-accent animate-[shimmer_2s_infinite]" style={{ width: '40%' }}></div>
-                        </div>
+                {/* Habit Detail Modal */}
+                {selectedHabit && (
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-main/90 backdrop-blur-sm animate-in fade-in duration-300">
+                        <Card className="w-full max-w-sm max-h-[90vh] overflow-y-auto bg-surface rounded-[40px] p-6 sm:p-8 border-accent/20 shadow-2xl relative custom-scrollbar">
+                            <button
+                                onClick={() => setSelectedHabit(null)}
+                                className="absolute top-6 right-6 p-2 rounded-2xl bg-main/50 text-tertiary hover:text-primary transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
 
-                        <div className="flex flex-col items-center text-center">
-                            <div className="w-16 h-16 rounded-3xl bg-accent/10 text-accent flex items-center justify-center mb-6">
-                                <ShieldCheck className="w-8 h-8" />
+                            <div className="flex flex-col items-center text-center mb-8">
+                                <div className="w-20 h-20 rounded-[32px] bg-accent/10 flex items-center justify-center mb-6">
+                                    {React.cloneElement((ICON_MAP[selectedHabit.icon] || <Target className="w-10 h-10 text-accent" />) as React.ReactElement<any>, { className: 'w-10 h-10 text-accent' })}
+                                </div>
+                                <h2 className="text-2xl font-bold text-primary mb-2 tracking-tight">{selectedHabit.title}</h2>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full shadow-sm
+                                    ${habitLogs[selectedHabit.id]?.is_completed ? 'bg-success/90 text-white' : 'bg-surface border border-white/5 text-tertiary'}`}>
+                                        {habitLogs[selectedHabit.id]?.is_completed ? 'Completado hoy' : 'Pendiente'}
+                                    </span>
+                                </div>
                             </div>
 
-                            <h2 className="text-xl font-bold text-primary mb-3">Protocolo de Protección Sugerido</h2>
-                            <p className="text-sm text-tertiary leading-relaxed mb-8">
-                                {pendingIntervention.message}
-                            </p>
+                            {(() => {
+                                // 1. Check for acute daily anomalies first
+                                const anomaly = detectAnomalies();
+                                let systemOpState = 'Expansión';
 
-                            <div className="space-y-3 w-full">
+                                if (anomaly?.type === 'Fuga de Enfoque' || protectionActive) systemOpState = 'Riesgo';
+                                else if (anomaly?.type === 'Estrés Sistémico') systemOpState = 'Regulación';
+                                else {
+                                    // 2. If no acute anomaly today, fall back to the overarching System State (Coherence)
+                                    const coh = coherenceStatus.state;
+                                    if (coh === 'Cascada') systemOpState = 'Cascada';
+                                    else if (coh === 'Riesgo' || coh === 'Inestable') systemOpState = 'Riesgo';
+                                    else if (coh === 'Regulación' || coh === 'Atención') systemOpState = 'Regulación';
+                                    else systemOpState = 'Expansión';
+                                }
+
+                                let multiplier = 1;
+                                if (systemOpState === 'Cascada') {
+                                    // SPRINT 8: Forced Intervention. Ignores user rigidity setting.
+                                    multiplier = 0.1;
+                                } else if (systemOpState === 'Riesgo') {
+                                    multiplier = rigidityLevel === 1 ? 0.1 : rigidityLevel === 2 ? 0.3 : 0.5;
+                                } else if (systemOpState === 'Regulación') {
+                                    multiplier = rigidityLevel === 1 ? 0.3 : rigidityLevel === 2 ? 0.5 : 0.8;
+                                }
+
+                                const baseQuantity = Number(selectedHabit.target_quantity) || 1;
+                                const unit = selectedHabit.target_unit || 'Vez';
+                                const recommendedQuantity = Math.max(1, Math.round(baseQuantity * multiplier));
+
+                                // Let's cap the slider at the exact base target so the user doesn't get confused by allowing 1.5x
+                                const maxSliderVal = baseQuantity;
+
+                                let message = selectedHabit.description || 'Enfoque y coherencia para el micro-protocolo de hoy.';
+                                if (systemOpState === 'Cascada') {
+                                    message = `[Alerta de Cascada] El sistema detectó sobrecarga estructural sostenida. Hemos reducido forzosamente tu carga a ${recommendedQuantity} ${unit} para evitar el burnout. Romper esta racha es tu única prioridad hoy.`;
+                                } else if (multiplier < 1) {
+                                    message = `[Micro-Intervención] Tu estado de sistema es ${coherenceStatus.state}. El protocolo sugiere reducir la exigencia a ${recommendedQuantity} ${unit}. Si lográs esto, la meta de hoy se considerará completada.`;
+                                }
+
+                                const cLog = habitLogs[selectedHabit.id];
+
+                                return (
+                                    <div className="space-y-6">
+                                        <div className="text-center">
+                                            <h4 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-3">Definición Estratégica</h4>
+                                            <p className="text-sm font-medium text-secondary leading-relaxed italic opacity-80">
+                                                "{message}"
+                                            </p>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <Slider
+                                                label={`¿Cuánto hiciste? (Sugerido: ${recommendedQuantity} ${unit})`}
+                                                value={cLog?.completed_quantity ?? 0}
+                                                min={0}
+                                                max={maxSliderVal}
+                                                minLabel="0"
+                                                maxLabel={`Max (${maxSliderVal})`}
+                                                onChange={async (val) => {
+                                                    if (isDayClosed || !user) return;
+                                                    const currentLog = habitLogs[selectedHabit.id] || {
+                                                        habit_id: selectedHabit.id,
+                                                        user_id: user.id,
+                                                        date: todayStr,
+                                                        friction: 5,
+                                                        is_completed: false,
+                                                        completed_quantity: 0
+                                                    };
+                                                    // Auto complete removed. User must click checkmark on main list.
+                                                    // We only save the quantity.
+
+                                                    setHabitLogs(prev => ({
+                                                        ...prev,
+                                                        [selectedHabit.id]: { ...currentLog, completed_quantity: val }
+                                                    }));
+
+                                                    try {
+                                                        await habitService.upsertHabitLog({
+                                                            ...currentLog,
+                                                            completed_quantity: val
+                                                        });
+                                                    } catch (err) {
+                                                        console.error('Error updating quantity:', err);
+                                                    }
+                                                }}
+                                                colorClass={multiplier < 1 ? "bg-accent/80" : "bg-success/80"}
+                                                disabled={isDayClosed}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <Slider
+                                                label="¿Qué tanto te costó hoy?"
+                                                value={cLog?.friction || 5}
+                                                onChange={async (val) => {
+                                                    if (isDayClosed || !user) return;
+                                                    const currentLog = habitLogs[selectedHabit.id] || {
+                                                        habit_id: selectedHabit.id,
+                                                        user_id: user.id,
+                                                        date: todayStr,
+                                                        friction: val,
+                                                        is_completed: false,
+                                                        completed_quantity: 0
+                                                    };
+
+                                                    setHabitLogs(prev => ({
+                                                        ...prev,
+                                                        [selectedHabit.id]: { ...currentLog, friction: val }
+                                                    }));
+
+                                                    try {
+                                                        await habitService.upsertHabitLog({
+                                                            ...currentLog,
+                                                            friction: val
+                                                        });
+                                                    } catch (err) {
+                                                        console.error('Error updating friction:', err);
+                                                    }
+                                                }}
+                                                colorClass="bg-accent"
+                                                disabled={isDayClosed}
+                                            />
+                                            <p className="text-[9px] text-tertiary px-1 italic">
+                                                Determina la dificultad sistémica que te generó esta acción.
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-main/30 rounded-2xl p-4 border border-white/5">
+                                                <h4 className="text-[9px] font-bold text-tertiary uppercase tracking-widest mb-1">Inicio de Hilo</h4>
+                                                <p className="text-xs font-bold text-primary">
+                                                    {new Date(selectedHabit.created_at || '').toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                                                </p>
+                                            </div>
+                                            <div className="bg-main/30 rounded-2xl p-4 border border-white/5">
+                                                <h4 className="text-[9px] font-bold text-tertiary uppercase tracking-widest mb-1">Días Activo</h4>
+                                                <p className="text-xs font-bold text-primary">
+                                                    {Math.max(1, Math.floor((new Date().getTime() - new Date(selectedHabit.created_at || '').getTime()) / (1000 * 3600 * 24)))} Días
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-4">
+                                            <Button
+                                                onClick={() => setSelectedHabit(null)}
+                                                className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl"
+                                            >
+                                                Cerrar Detalle
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </Card>
+                    </div>
+                )}
+
+                {/* Closure Confirmation Modal */}
+                {showCloseConfirm && (
+                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-main/95 backdrop-blur-md animate-in fade-in duration-300">
+                        <Card className="w-full max-w-sm bg-surface rounded-[40px] p-8 border-error/20 shadow-2xl text-center">
+                            <div className="w-16 h-16 rounded-3xl bg-error/10 text-error flex items-center justify-center mx-auto mb-6">
+                                <AlertCircle className="w-8 h-8" />
+                            </div>
+                            <h2 className="text-xl font-bold text-primary mb-3">¿Confirmar Balance Final?</h2>
+                            <p className="text-sm text-tertiary leading-relaxed mb-8">
+                                Una vez cerrado, el registro de hoy será **inmutable** para tus hábitos y balances de energía. Sin embargo, podrás seguir agregando logs de eventos durante el resto del día.
+                            </p>
+                            <div className="space-y-3">
                                 <Button
-                                    onClick={() => {
-                                        setProtectionActive(true);
-                                        setPendingIntervention(null);
-                                    }}
-                                    className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl bg-accent hover:bg-accent/90 border-transparent text-white"
+                                    onClick={executeCloseDay}
+                                    className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl bg-error hover:bg-error/90 border-transparent text-white"
                                 >
-                                    Activar Protección (10%)
+                                    Confirmar Sincronización
                                 </Button>
                                 <button
-                                    onClick={() => setPendingIntervention(null)}
+                                    onClick={() => setShowCloseConfirm(false)}
                                     className="w-full py-4 text-xs font-bold text-tertiary hover:text-primary uppercase tracking-[0.2em] transition-colors"
                                 >
-                                    No, hoy puedo con todo
+                                    Volver y Revisar
                                 </button>
                             </div>
-                        </div>
-                    </Card>
-                </div>
-            )}
-        </motion.div>
+                        </Card>
+                    </div>
+                )}
+
+                {/* Event Log Modal */}
+                {showEventModal && (
+                    <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-main/90 backdrop-blur-md animate-in fade-in duration-300">
+                        <Card className="w-full max-w-sm bg-surface rounded-[40px] p-8 border border-white/5 shadow-2xl">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold text-primary">Log de Energía</h2>
+                                <button onClick={() => setShowEventModal(false)} className="text-tertiary hover:text-primary transition-colors">
+                                    <X className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6">
+                                <div className="flex p-1 bg-main rounded-2xl">
+                                    <button
+                                        onClick={() => setEventInput(prev => ({ ...prev, type: 'recarga' }))}
+                                        className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all
+                                        ${eventInput.type === 'recarga' ? 'bg-success text-white shadow-lg' : 'text-tertiary hover:text-secondary'}`}
+                                    >
+                                        Recarga
+                                    </button>
+                                    <button
+                                        onClick={() => setEventInput(prev => ({ ...prev, type: 'friccion' }))}
+                                        className={`flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all
+                                        ${eventInput.type === 'friccion' ? 'bg-error text-white shadow-lg' : 'text-tertiary hover:text-secondary'}`}
+                                    >
+                                        Fricción
+                                    </button>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-tertiary uppercase tracking-widest px-1">Detalle del Evento</label>
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        value={eventInput.label}
+                                        onChange={(e) => setEventInput(prev => ({ ...prev, label: e.target.value }))}
+                                        placeholder={eventInput.type === 'recarga' ? "Ej: Caminata solar, Lectura..." : "Ej: Tráfico, Discusión..."}
+                                        className="w-full bg-main border-transparent rounded-2xl p-4 text-sm text-primary placeholder:text-tertiary focus:outline-none focus:ring-1 focus:ring-accent/20 transition-all font-medium"
+                                    />
+                                </div>
+
+                                <Button
+                                    onClick={handleLogEnergyEvent}
+                                    disabled={!eventInput.label.trim() || isSaving}
+                                    className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl border-transparent text-white bg-accent hover:bg-accent/90 disabled:opacity-50"
+                                >
+                                    {isSaving ? 'Registrando...' : 'Registrar Evento'}
+                                </Button>
+                            </div>
+                        </Card>
+                    </div>
+                )}
+
+                {/* N+1 Intervention Modal */}
+                {pendingIntervention && (
+                    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-main/95 backdrop-blur-xl animate-in fade-in duration-500">
+                        <Card className="w-full max-w-sm bg-surface rounded-[40px] p-8 border-accent/20 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-accent/20">
+                                <div className="h-full bg-accent animate-[shimmer_2s_infinite]" style={{ width: '40%' }}></div>
+                            </div>
+
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-16 h-16 rounded-3xl bg-accent/10 text-accent flex items-center justify-center mb-6">
+                                    <ShieldCheck className="w-8 h-8" />
+                                </div>
+
+                                <h2 className="text-xl font-bold text-primary mb-3">Protocolo de Protección Sugerido</h2>
+                                <p className="text-sm text-tertiary leading-relaxed mb-8">
+                                    {pendingIntervention.message}
+                                </p>
+
+                                <div className="space-y-3 w-full">
+                                    <Button
+                                        onClick={() => {
+                                            setProtectionActive(true);
+                                            setPendingIntervention(null);
+                                        }}
+                                        className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl bg-accent hover:bg-accent/90 border-transparent text-white"
+                                    >
+                                        Activar Protección (10%)
+                                    </Button>
+                                    <button
+                                        onClick={() => setPendingIntervention(null)}
+                                        className="w-full py-4 text-xs font-bold text-tertiary hover:text-primary uppercase tracking-[0.2em] transition-colors"
+                                    >
+                                        No, hoy puedo con todo
+                                    </button>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                )}
+            </motion.div>
+        </>
     );
 }

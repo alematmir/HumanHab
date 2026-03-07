@@ -99,7 +99,7 @@ export function Login() {
                 </p>
 
                 <p className="text-[10px] text-tertiary mt-12 tracking-wider">
-                    MVP2 · BUILD 2.0.2 · HUMANHAB
+                    MVP3 · BUILD 3.0.1 · HUMANHAB
                 </p>
             </div>
         </div>
