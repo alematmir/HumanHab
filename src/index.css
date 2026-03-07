@@ -12,9 +12,11 @@
 
         --color-text-primary: #FAFAFA;
         --color-text-secondary: #C2C2C2;
-        --color-text-tertiary: #B0B0B0; /* Increased brightness for dark backgrounds */
+        --color-text-tertiary: #B0B0B0;
+        /* Increased brightness for dark backgrounds */
 
-        --color-brand-accent: #8A80FF; /* Vibrant luminescent purple for dark backgrounds */
+        --color-brand-accent: #8A80FF;
+        /* Vibrant luminescent purple for dark backgrounds */
         --color-brand-accent-hover: #A098FF;
 
         /* Estados Funcionales */
@@ -58,6 +60,43 @@
 
     body {
         @apply bg-main text-primary font-sans antialiased selection:bg-accent selection:text-white;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    /* Premium Glassmorphism */
+    .glass-card {
+        @apply bg-card/40 backdrop-blur-md border border-white/5 rounded-2xl;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    .glass-button {
+        @apply bg-accent/20 hover:bg-accent/30 backdrop-blur-sm border border-accent/30 rounded-xl transition-all duration-300;
+    }
+
+    /* Dynamic Gradients for states */
+    .grad-expansion {
+        background: linear-gradient(135deg, rgba(138, 128, 255, 0.2) 0%, rgba(47, 122, 95, 0.2) 100%);
+    }
+
+    .grad-riesgo {
+        background: linear-gradient(135deg, rgba(163, 58, 58, 0.2) 0%, rgba(176, 122, 47, 0.2) 100%);
+    }
+
+    /* Animations Support */
+    .reveal-card {
+        animation: cardReveal 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes cardReveal {
+        from {
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
     }
 }
 

@@ -67,27 +67,17 @@ export function Slider({
                     .slider-${uniqueId}::-webkit-slider-thumb {
                         -webkit-appearance: none;
                         appearance: none;
-                        width: 22px;
-                        height: 22px;
-                        background: ${sliderColor} !important;
-                        border-radius: 50%;
-                        border: 4px solid var(--color-bg-surface);
-                        box-shadow: 0 0 0 1px ${sliderColor};
+                        width: 20px;
+                        height: 20px;
+                        background: #FAFAFA !important;
+                        border-radius: 6px;
+                        box-shadow: 0 0 15px 0 ${sliderColor};
                         cursor: pointer;
-                        transition: transform 0.1s, background 0.3s;
-                    }
-                    /* Ensure Firefox also works */
-                    .slider-${uniqueId}::-moz-range-thumb {
-                        width: 22px;
-                        height: 22px;
-                        background: ${sliderColor} !important;
-                        border-radius: 50%;
-                        border: 4px solid var(--color-bg-surface);
-                        box-shadow: 0 0 0 1px ${sliderColor};
-                        cursor: pointer;
+                        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
                     }
                     .slider-${uniqueId}:active::-webkit-slider-thumb {
-                        transform: scale(1.2);
+                        transform: scale(1.1) rotate(45deg);
+                        border-radius: 8px;
                     }
                 `}</style>
                 <div className="absolute w-full flex justify-between top-10 text-[10px] font-bold text-tertiary uppercase tracking-widest">

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import confetti from 'canvas-confetti';
 import {
     Calendar,
     Bell,
@@ -249,6 +251,14 @@ export function Ciclo() {
 
             if (error) throw error;
 
+            // Trigger celebration
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#8A80FF', '#2F7A5F', '#FAFAFA']
+            });
+
             setIsDayClosed(true);
         } catch (err: any) {
             console.error('Error closing day:', err);
@@ -341,7 +351,11 @@ export function Ciclo() {
     }
 
     return (
-        <div className="flex flex-col min-h-[calc(100vh-120px)] animate-in fade-in duration-500 pb-20">
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col min-h-[calc(100vh-120px)] animate-in fade-in duration-500 pb-20"
+        >
             <header className="flex items-center justify-between mb-8 mt-2">
                 <button className="p-2 -ml-2 text-primary hover:text-accent transition-colors">
                     <Calendar className="w-6 h-6" />
@@ -899,6 +913,6 @@ export function Ciclo() {
                     </Card>
                 </div>
             )}
-        </div>
+        </motion.div>
     );
 }

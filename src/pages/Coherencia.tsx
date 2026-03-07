@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
-import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '../components/ui/Card';
 import { ProtocolModal } from '../components/ui/ProtocolModal';
 import protocolAsset from '../assets/protocol_energy_flow.png';
@@ -179,7 +180,11 @@ export function Coherencia() {
             'bg-error shadow-[0_0_12px_rgba(239,68,68,0.4)]';
 
     return (
-        <div className="flex flex-col min-h-[calc(100vh-120px)] animate-in fade-in duration-500 pb-10">
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col min-h-[calc(100vh-120px)] pb-10"
+        >
             <header className="mb-6 mt-2">
                 <h1 className="text-3xl font-bold text-primary tracking-tight">Coherencia</h1>
                 <p className="text-tertiary text-sm mt-1">Estado de tu sistema bio-conductual</p>
@@ -187,7 +192,7 @@ export function Coherencia() {
 
             <div className="space-y-4">
                 <Card
-                    className="rounded-[32px] border-transparent p-8 overflow-hidden shadow-2xl bg-surface cursor-pointer active:scale-[0.99] transition-all space-y-8"
+                    className="p-8 overflow-hidden cursor-pointer active:scale-[0.99] transition-all space-y-8 reveal-card"
                     onClick={() => setIsModalOpen(true)}
                 >
                     <div className="flex justify-between items-start">
@@ -228,13 +233,13 @@ export function Coherencia() {
                     <div className="px-2 pt-4">
                         <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-4 text-center">Métricas de Sincronización</h2>
                         <div className="grid grid-cols-2 gap-4 mb-4">
-                            <Card className="p-5 rounded-3xl border-transparent shadow-sm flex flex-col items-center bg-surface">
+                            <Card className="p-5 flex flex-col items-center">
                                 <span className="text-[9px] font-bold text-tertiary uppercase mb-2">Fricción Promedio</span>
                                 <span className="text-2xl font-bold text-primary">
                                     {(recentSummaries.reduce((acc, s) => acc + s.friction, 0) / recentSummaries.length).toFixed(1)}
                                 </span>
                             </Card>
-                            <Card className="p-5 rounded-3xl border-transparent shadow-sm flex flex-col items-center bg-surface">
+                            <Card className="p-5 flex flex-col items-center">
                                 <span className="text-[9px] font-bold text-tertiary uppercase mb-2">Vitalidad Promedio</span>
                                 <span className="text-2xl font-bold text-accent">
                                     {(recentSummaries.reduce((acc, s) => acc + s.energy, 0) / recentSummaries.length).toFixed(1)}
@@ -361,12 +366,8 @@ export function Coherencia() {
             <p className="text-center text-[10px] text-tertiary/40 mt-16 uppercase tracking-[0.3em] font-bold">
                 Motor de Coherencia • v2.0 • Lab Mode
             </p>
-        </div>
+        </motion.div>
     );
 }
 
-const Zap = ({ className }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-);
+
