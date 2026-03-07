@@ -72,9 +72,9 @@ export function SetupHabit() {
     const [manualTitle, setManualTitle] = useState('');
     const [manualDesc, setManualDesc] = useState('');
     const [manualIcon, setManualIcon] = useState('Plus');
-    const [manualQuantity, setManualQuantity] = useState<number>(1);
+    const [manualQuantity, setManualQuantity] = useState<number | string>(1);
     const [manualUnit, setManualUnit] = useState<string>('Vez');
-    const [selectedConfigs, setSelectedConfigs] = useState<Record<string, { quantity: number; unit: string }>>({});
+    const [selectedConfigs, setSelectedConfigs] = useState<Record<string, { quantity: number | string; unit: string }>>({});
 
     const CUSTOM_ICONS = [
         { name: 'Plus', icon: <Plus className="w-5 h-5" /> },
@@ -177,7 +177,7 @@ export function SetupHabit() {
                     description: arsenal?.description || '',
                     icon: arsenal?.iconName || 'Target',
                     is_active: true,
-                    target_quantity: config.quantity,
+                    target_quantity: Number(config.quantity) || 1,
                     target_unit: config.unit
                 };
             });
@@ -189,7 +189,7 @@ export function SetupHabit() {
                     description: manualDesc,
                     icon: manualIcon,
                     is_active: true,
-                    target_quantity: manualQuantity,
+                    target_quantity: Number(manualQuantity) || 1,
                     target_unit: manualUnit
                 });
             }
@@ -304,10 +304,10 @@ export function SetupHabit() {
                                             <input
                                                 type="number"
                                                 min="1"
-                                                value={selectedConfigs[item.id]?.quantity || 1}
+                                                value={selectedConfigs[item.id]?.quantity}
                                                 onChange={(e) => setSelectedConfigs(prev => ({
                                                     ...prev,
-                                                    [item.id]: { ...prev[item.id], quantity: Number(e.target.value) }
+                                                    [item.id]: { ...prev[item.id], quantity: e.target.value }
                                                 }))}
                                                 className="w-20 bg-main border border-white/5 rounded-xl p-2 text-[11px] text-primary font-bold focus:outline-none focus:ring-1 focus:ring-accent"
                                             />
@@ -392,7 +392,7 @@ export function SetupHabit() {
                                             type="number"
                                             min="1"
                                             value={manualQuantity}
-                                            onChange={(e) => setManualQuantity(Number(e.target.value))}
+                                            onChange={(e) => setManualQuantity(e.target.value)}
                                             className="w-full bg-main border-transparent rounded-2xl p-4 text-sm text-primary focus:outline-none focus:ring-1 focus:ring-accent/30 font-bold"
                                         />
                                     </div>
