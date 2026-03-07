@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock } from 'lucide-react';
-import iconHumanHab from '../assets/IconHumanHab.png';
+import iconHumanHab from '../assets/logohuman.png.png';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { supabase } from '../lib/supabase';
@@ -23,9 +23,11 @@ export function Login() {
 
         if (signInError) {
             if (signInError.message.toLowerCase().includes('email not confirmed')) {
-                setError('Tu email aún no ha sido confirmado. Revisa tu bandeja de entrada o desactiva la confirmación en Supabase.');
+                setError('Acceso bloqueado. El correo de confirmación aún está en tránsito o no ha sido activado.');
+            } else if (signInError.message.toLowerCase().includes('invalid login credentials')) {
+                setError('Credenciales no detectadas en el sistema. Verifica tu entrada o regístrate si es tu primer ciclo.');
             } else {
-                setError('Credenciales inválidas. ¿Aún no tienes cuenta? Regístrate abajo.');
+                setError('Fallo en la sincronización de acceso. Intenta de nuevo en unos instantes.');
             }
         }
 

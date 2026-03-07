@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, ChevronRight, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import iconHumanHab from '../assets/IconHumanHab.png';
+import iconHumanHab from '../assets/logohuman.png.png';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { supabase } from '../lib/supabase';
@@ -11,12 +11,38 @@ export function Register() {
     const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
 
+    const getPasswordStrength = (pass: string) => {
+        let strength = 0;
+        if (pass.length >= 8) strength += 25;
+        if (/[A-Z]/.test(pass)) strength += 25;
+        if (/[0-9]/.test(pass)) strength += 25;
+        if (/[^A-Za-z0-9]/.test(pass)) strength += 25;
+        return strength;
+    };
+
+    const strength = getPasswordStrength(password);
+    const passwordsMatch = password === confirmPassword && password !== '';
+    const isPasswordValid = password.length >= 8;
+
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!isPasswordValid) {
+            setError('La clave de coherencia debe tener al menos 8 caracteres.');
+            setIsLoading(false);
+            return;
+        }
+
+        if (!passwordsMatch) {
+            setError('Las claves no coinciden. Verifica tu entrada.');
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
 
@@ -86,14 +112,49 @@ export function Register() {
                         icon={<Mail className="w-5 h-5" />}
                     />
 
+                    <div className="space-y-1">
+                        <Input
+                            label="Contraseña"
+                            type="password"
+                            placeholder="••••••••"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            icon={<Lock className="w-5 h-5" />}
+                        />
+                        {password.length > 0 && (
+                            <div className="px-1 pt-1">
+                                <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden flex gap-1">
+                                    <div
+                                        className={`h-full transition-all duration-500 ${strength <= 25 ? 'bg-error shadow-[0_0_8px_rgba(239,68,68,0.5)]' :
+                                            strength <= 50 ? 'bg-warning shadow-[0_0_8px_rgba(242,153,74,0.5)]' :
+                                                strength <= 75 ? 'bg-accent shadow-[0_0_8px_rgba(138,128,255,0.5)]' :
+                                                    'bg-success shadow-[0_0_8px_rgba(34,197,94,0.5)]'
+                                            }`}
+                                        style={{ width: `${strength}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-[8px] font-bold uppercase tracking-widest mt-1.5 opacity-60">
+                                    Fortaleza: {
+                                        strength <= 25 ? 'Vulnerable' :
+                                            strength <= 50 ? 'Base' :
+                                                strength <= 75 ? 'Robusta' :
+                                                    'Coherente'
+                                    }
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
                     <Input
-                        label="Contraseña"
+                        label="Confirmar Contraseña"
                         type="password"
                         placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
                         required
                         icon={<Lock className="w-5 h-5" />}
+                        className={confirmPassword.length > 0 && !passwordsMatch ? 'ring-1 ring-error/50' : ''}
                     />
 
                     {error && (
@@ -105,9 +166,9 @@ export function Register() {
                     <Button
                         type="submit"
                         className="w-full mt-2 py-3 rounded-xl text-base shadow-sm font-bold"
-                        disabled={isLoading}
+                        disabled={isLoading || !isPasswordValid || !passwordsMatch}
                     >
-                        {isLoading ? 'Creando cuenta...' : 'Confirmar y Empezar'}
+                        {isLoading ? 'Sincronizando...' : 'Confirmar y Empezar'}
                         {!isLoading && <ChevronRight className="w-4 h-4 ml-2" />}
                     </Button>
                 </form>
