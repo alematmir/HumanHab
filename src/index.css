@@ -4,69 +4,58 @@
 
 @layer base {
     :root {
-        /* Base Dark Mode (Default) - Values in space-separated RGB for Tailwind opacity support */
-        --color-bg-main: 15 28 46;
-        /* #0F1C2E */
-        --color-bg-surface: 22 38 63;
-        /* #16263F */
-        --color-bg-card: 30 47 82;
-        /* #1E2F52 */
-        --color-border: 64 64 64;
-        /* #404040 */
+        /* Base Dark Mode (Default) */
+        --color-bg-main: #0F1C2E;
+        --color-bg-surface: #16263F;
+        --color-bg-card: #1E2F52;
+        --color-border: #404040;
 
-        --color-text-primary: 250 250 250;
-        /* #FAFAFA */
-        --color-text-secondary: 194 194 194;
-        /* #C2C2C2 */
-        --color-text-tertiary: 176 176 176;
-        /* #B0B0B0 */
+        --color-text-primary: #FAFAFA;
+        --color-text-secondary: #C2C2C2;
+        --color-text-tertiary: #B0B0B0;
+        /* Increased brightness for dark backgrounds */
 
-        --color-brand-accent: 138 128 255;
-        /* #8A80FF */
-        --color-brand-accent-hover: 160 152 255;
-        /* #A098FF */
+        --color-brand-accent: #8A80FF;
+        /* Vibrant luminescent purple for dark backgrounds */
+        --color-brand-accent-hover: #A098FF;
 
         /* Estados Funcionales */
-        --color-success: 47 122 95;
-        /* #2F7A5F */
-        --color-warning: 176 122 47;
-        /* #B07A2F */
-        --color-error: 163 58 58;
-        /* #A33A3A */
-        --color-info: 46 91 159;
-        /* #2E5B9F */
+        --color-success: #2F7A5F;
+        --color-warning: #B07A2F;
+        --color-error: #A33A3A;
+        --color-info: #2E5B9F;
 
         /* Raw Neutrals */
-        --gray-50: 250 250 250;
-        --gray-100: 242 242 242;
-        --gray-200: 226 226 226;
-        --gray-300: 194 194 194;
-        --gray-400: 154 154 154;
-        --gray-500: 115 115 115;
-        --gray-600: 90 90 90;
-        --gray-700: 64 64 64;
-        --gray-800: 43 43 43;
-        --gray-900: 26 26 26;
+        --gray-50: #FAFAFA;
+        --gray-100: #F2F2F2;
+        --gray-200: #E2E2E2;
+        --gray-300: #C2C2C2;
+        --gray-400: #9A9A9A;
+        --gray-500: #737373;
+        --gray-600: #5A5A5A;
+        --gray-700: #404040;
+        --gray-800: #2B2B2B;
+        --gray-900: #1A1A1A;
 
         /* Raw Blue Structural */
-        --blue-900: 15 28 46;
-        --blue-800: 22 38 63;
-        --blue-700: 30 47 82;
-        --blue-600: 39 64 110;
+        --blue-900: #0F1C2E;
+        --blue-800: #16263F;
+        --blue-700: #1E2F52;
+        --blue-600: #27406E;
     }
 
     .light {
-        --color-bg-main: 250 250 250;
-        --color-bg-surface: 242 242 242;
-        --color-bg-card: 250 250 250;
-        --color-border: 226 226 226;
+        --color-bg-main: #FAFAFA;
+        --color-bg-surface: #F2F2F2;
+        --color-bg-card: #FAFAFA;
+        --color-border: #E2E2E2;
 
-        --color-text-primary: 26 26 26;
-        --color-text-secondary: 90 90 90;
-        --color-text-tertiary: 115 115 115;
+        --color-text-primary: #1A1A1A;
+        --color-text-secondary: #5A5A5A;
+        --color-text-tertiary: #737373;
 
-        --color-brand-accent: 75 66 178;
-        --color-brand-accent-hover: 63 54 150;
+        --color-brand-accent: #4B42B2;
+        --color-brand-accent-hover: #3F3696;
     }
 
     body {
@@ -76,19 +65,19 @@
 
     /* Premium Glassmorphism */
     .glass-card {
-        background-color: rgb(var(--color-bg-card) / 0.4);
+        background-color: color-mix(in srgb, var(--color-bg-card) 40%, transparent);
         @apply backdrop-blur-md border border-white/5 rounded-2xl;
         box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     }
 
     .glass-button {
-        background-color: rgb(var(--color-brand-accent) / 0.2);
-        border: 1px solid rgb(var(--color-brand-accent) / 0.3);
+        background-color: color-mix(in srgb, var(--color-brand-accent) 20%, transparent);
+        border: 1px solid color-mix(in srgb, var(--color-brand-accent) 30%, transparent);
         @apply backdrop-blur-sm rounded-xl transition-all duration-300;
     }
 
     .glass-button:hover {
-        background-color: rgb(var(--color-brand-accent) / 0.3);
+        background-color: color-mix(in srgb, var(--color-brand-accent) 30%, transparent);
     }
 
     /* Dynamic Gradients for states */
