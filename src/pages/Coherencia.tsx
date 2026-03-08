@@ -7,6 +7,8 @@ import { Card } from '../components/ui/Card';
 import { ProtocolModal } from '../components/ui/ProtocolModal';
 import protocolAsset from '../assets/protocol_energy_flow.png';
 import { useCoherence } from '../hooks/useCoherence';
+import { habitService } from '../lib/habitService';
+import { OPERATIONAL_STATES, PROTOCOLS, PROTOCOL_MESSAGES } from '../config/bioConfig';
 
 interface LogSummary {
     id: string;
@@ -18,18 +20,17 @@ interface LogSummary {
 
 export function Coherencia() {
     const { user } = useAuthStore();
-    const { status, recoverySpeed, isLoading: isCoherenceLoading, refetch } = useCoherence();
+    const { status, recoverySpeed, isLoading: isCoherenceLoading } = useCoherence();
     const [recentSummaries, setRecentSummaries] = useState<LogSummary[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isSimulating, setIsSimulating] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const protocolContent = {
-        'Recuperación': 'Hoy hubo fricción. No es ruptura. Es ajuste. Retomá desde el punto mínimo.',
-        'Alerta': 'El sistema detectó una baja leve. Prioriza estabilidad sobre expansión. Mantén el ritmo.',
-        'Desincronización': 'El silencio es señal. Detectamos un vacío ayer. Retomá hoy para cerrar la brecha.',
-        'Monitoreo': 'Registro inicial con alta fricción. Enfócate en la simplicidad para consolidar la base.',
-        'Mantenimiento': 'Sincronización óptima detectada. Continúa con el flujo actual del sistema.'
+        [PROTOCOLS.RECOVERY]: PROTOCOL_MESSAGES.RECOVERY,
+        [PROTOCOLS.ALERT]: PROTOCOL_MESSAGES.ALERT,
+        [PROTOCOLS.DESYNC]: PROTOCOL_MESSAGES.DESYNC,
+        [PROTOCOLS.MONITORING]: PROTOCOL_MESSAGES.MONITORING,
+        [PROTOCOLS.MAINTENANCE]: PROTOCOL_MESSAGES.MAINTENANCE
     };
 
     const getLocalDateStr = (d: Date) => {
@@ -58,114 +59,6 @@ export function Coherencia() {
         fetchRecentSummaries();
     }, [user, isCoherenceLoading]);
 
-    const forceRigidity = async (level: number) => {
-        if (!user) return;
-        setIsSimulating(true);
-        try {
-            const { error } = await supabase
-                .from('user_profiles')
-                .update({ rigidity_level: level })
-                .eq('user_id', user.id);
-            if (error) throw error;
-            alert(`Nivel de rigurosidad forzado a nivel ${level} para pruebas.`);
-        } catch (err) {
-            console.error('Error forcing rigidity:', err);
-            alert('Error al forzar rigurosidad');
-        } finally {
-            setIsSimulating(false);
-        }
-    };
-
-    const forceLevel = async (level: string) => {
-        if (!user) return;
-        setIsSimulating(true);
-        try {
-            const { error } = await supabase
-                .from('user_profiles')
-                .update({ level })
-                .eq('user_id', user.id);
-            if (error) throw error;
-            alert(`Nivel de perfil forzado a ${level} para pruebas.`);
-        } catch (err) {
-            console.error('Error forcing level:', err);
-            alert('Error al forzar nivel');
-        } finally {
-            setIsSimulating(false);
-        }
-    };
-
-    const simulateScenario = async (type: 'CASCADA' | 'RESILIENTE' | 'BURN_OUT' | 'OPTIMO' | 'VOLATIL' | 'LIMPIAR') => {
-        if (!user) return;
-        setIsSimulating(true);
-
-        const today = new Date();
-        const summaries = [];
-
-        if (type === 'LIMPIAR') {
-            try {
-                await supabase.from('daily_summaries').delete().eq('user_id', user.id);
-                await supabase.from('habit_logs').delete().eq('user_id', user.id);
-                await supabase.from('energy_events').delete().eq('user_id', user.id);
-                await refetch();
-                await fetchRecentSummaries();
-                window.location.reload(); // Hard reload to clear all local states
-            } catch (err) {
-                console.error('Error clearing:', err);
-            } finally {
-                setIsSimulating(false);
-            }
-            return;
-        }
-
-        // Generate 14 days of history (excluding today)
-        for (let i = 14; i >= 1; i--) {
-            const date = new Date();
-            date.setDate(today.getDate() - i);
-            const dStr = getLocalDateStr(date);
-
-            let friction = 3, energy = 7, state = 'Expansión';
-
-            if (type === 'RESILIENTE') {
-                // Drop on day -10/-9, recover on -8
-                if (i === 11 || i === 10) { state = 'Regulación'; energy = 3; friction = 8; }
-                else if (i === 9) { state = 'Sostén'; energy = 6; friction = 4; }
-                // Drop on day -5, recover on -4
-                else if (i === 6) { state = 'Riesgo'; energy = 7; friction = 8; }
-                else if (i === 5) { state = 'Sostén'; energy = 6; friction = 4; }
-            } else if (type === 'BURN_OUT') {
-                if (i <= 11) { state = 'Regulación'; energy = 2; friction = 9; }
-            } else if (type === 'CASCADA') {
-                // For a 14 day history, we just need the LAST TWO DAYS (i=2 and i=1) to be bad. The rest can be ok.
-                if (i <= 2) { state = 'Regulación'; energy = 3; friction = 8; }
-                else { state = 'Sostén'; energy = 6; friction = 5; }
-            } else if (type === 'VOLATIL') {
-                if (i % 3 === 0) { state = 'Regulación'; energy = 3; friction = 8; }
-            } else if (type === 'OPTIMO') {
-                state = 'Expansión'; energy = 9; friction = 1;
-            }
-
-            summaries.push({
-                user_id: user.id,
-                date: dStr,
-                friction,
-                energy,
-                operational_state: state,
-                note: `Simulación ${type}: Día -${i}`
-            });
-        }
-
-        try {
-            const { error } = await supabase.from('daily_summaries').upsert(summaries, { onConflict: 'user_id,date' });
-            if (error) throw error;
-            await refetch();
-            await fetchRecentSummaries();
-        } catch (err) {
-            console.error('Error simulating:', err);
-            alert('Error en simulación');
-        } finally {
-            setIsSimulating(false);
-        }
-    };
 
     if (isLoading || isCoherenceLoading) {
         return (
@@ -279,79 +172,6 @@ export function Coherencia() {
                     </div>
                 )}
 
-                <div className="mt-12 pt-8 border-t border-white/5">
-                    <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
-                        <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-                        Laboratorio de Simulación Bio-Sistémica
-                    </h2>
-                    <div className="grid grid-cols-1 gap-3">
-                        {[
-                            { id: 'CASCADA', label: 'Disfunción en Cascada', desc: 'Simula 2 días seguidos de caída brusca para activar el Escudo Preventivo.', color: 'error' },
-                            { id: 'RESILIENTE', label: 'Historial Resiliente', desc: 'Simula 14 días con 2 ciclos de caída y recuperación exitosa.', color: 'success' },
-                            { id: 'BURN_OUT', label: 'Agotamiento Crónico', desc: '14 días de inestabilidad profunda sin retorno al equilibrio.', color: 'error' },
-                            { id: 'VOLATIL', label: 'Patrón de Inestabilidad', desc: 'Ciclos intermitentes de estrés cada 72 horas.', color: 'warning' },
-                            { id: 'OPTIMO', label: 'Reloj Suizo (Ideal)', desc: '100% de consistencia en estado de Expansión/Sostén.', color: 'accent' },
-                            { id: 'LIMPIAR', label: 'Reiniciar Historial', desc: 'Elimina todos los registros para empezar de cero.', color: 'secondary' }
-                        ].map((btn) => (
-                            <button
-                                key={btn.id}
-                                onClick={() => simulateScenario(btn.id as any)}
-                                disabled={isSimulating}
-                                className="bg-surface/40 hover:bg-surface text-left p-4 rounded-3xl transition-all border border-white/5 group active:scale-[0.98]"
-                            >
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className={`text-[11px] font-black uppercase tracking-widest text-${btn.color} group-hover:translate-x-1 transition-transform`}>
-                                        {btn.label}
-                                    </span>
-                                    <div className={`w-1.5 h-1.5 rounded-full bg-${btn.color}/30 group-hover:bg-${btn.color} transition-colors`}></div>
-                                </div>
-                                <p className="text-[10px] text-tertiary leading-relaxed">
-                                    {btn.desc}
-                                </p>
-                            </button>
-                        ))}
-                    </div>
-
-                    <h2 className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] mt-8 mb-4 flex items-center gap-3">
-                        <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-                        Overrides de Rigurosidad (God Mode)
-                    </h2>
-                    <p className="text-[10px] text-tertiary mb-4 italic">
-                        Bypassea las Leyes Biológicas de Perfil. Cambia la rigurosidad instantáneamente para probar el Slider de Ciclo.
-                    </p>
-                    <div className="flex gap-2">
-                        {[1, 2, 3].map((level) => {
-                            const labels = ['Compasivo (N1)', 'Equilibrado (N2)', 'Dureza (N3)'];
-                            return (
-                                <button
-                                    key={level}
-                                    onClick={() => forceRigidity(level)}
-                                    disabled={isSimulating}
-                                    className="flex-1 bg-surface/40 hover:bg-surface text-[9px] font-bold text-accent uppercase tracking-widest p-3 rounded-2xl transition-all border border-accent/20 active:scale-95"
-                                >
-                                    {labels[level - 1]}
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    <h2 className="text-[10px] font-bold text-accent uppercase tracking-[0.2em] mt-6 mb-4 flex items-center gap-3">
-                        <span className="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
-                        Overrides de Nivel de Montaña
-                    </h2>
-                    <div className="flex gap-2">
-                        {['Principiante', 'Intermedio', 'Avanzado'].map((lvl) => (
-                            <button
-                                key={lvl}
-                                onClick={() => forceLevel(lvl)}
-                                disabled={isSimulating}
-                                className="flex-1 bg-surface/40 hover:bg-surface text-[9px] font-bold text-accent uppercase tracking-widest p-3 rounded-2xl transition-all border border-accent/20 active:scale-95"
-                            >
-                                {lvl}
-                            </button>
-                        ))}
-                    </div>
-                </div>
             </div>
 
             <ProtocolModal

@@ -23,13 +23,19 @@ import {
     History,
     Heart,
     Brain,
+    Activity,
     Coffee,
-    Sun
+    Sun,
+    ShieldAlert,
+    Award
 } from 'lucide-react';
 import { OnboardingTutorial } from '../components/ui/OnboardingTutorial';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Slider } from '../components/ui/Slider';
+import { ProtocolModal } from '../components/ui/ProtocolModal';
+import protocolAsset from '../assets/protocol_energy_flow.png';
+import { OPERATIONAL_STATES, PROTOCOLS, PROTOCOL_MESSAGES, BIO_THRESHOLDS } from '../config/bioConfig';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { habitService, Habit, HabitLog, EnergyEvent } from '../lib/habitService';
@@ -58,7 +64,9 @@ export function Ciclo() {
 
     // State for data
     const [habits, setHabits] = useState<Habit[]>([]);
+    const [recentlyIntegrated, setRecentlyIntegrated] = useState(false);
     const [habitLogs, setHabitLogs] = useState<Record<string, HabitLog>>({});
+    const [habitsHealth, setHabitsHealth] = useState<Record<string, any>>({});
     const [summary, setSummary] = useState({ energy: 5, friction: 5, note: '' });
     const [energyEvents, setEnergyEvents] = useState<EnergyEvent[]>([]);
 
@@ -84,9 +92,11 @@ export function Ciclo() {
     const [isCalibrating, setIsCalibrating] = useState(false);
     const [rigidityLevel, setRigidityLevel] = useState(2); // 1 = Compasivo, 2 = Equilibrado, 3 = Dureza
     const [userLevel, setUserLevel] = useState('Principiante');
+    const [calibrationDay, setCalibrationDay] = useState(1);
+    const [showCalibrationInfo, setShowCalibrationInfo] = useState(false);
 
     // System State from Coherence
-    const { status: coherenceStatus } = useCoherence();
+    const { status: coherenceStatus, baselineEnergy } = useCoherence();
 
     useEffect(() => {
         if (!user) return;
@@ -104,14 +114,33 @@ export function Ciclo() {
                 if (profile?.rigidity_level) setRigidityLevel(profile.rigidity_level);
                 if (profile?.level) setUserLevel(profile.level);
 
-                // 1. Get active habits
                 const activeHabits = await habitService.getActiveHabits(user.id);
                 setHabits(activeHabits);
+
+                const integrated = await habitService.getHabitsByStatus(user.id, 'integrated');
+
+                let hasUnusedReward = false;
+                if (integrated.length > 0) {
+                    const lastIntegratedTime = Math.max(...integrated.map(h => new Date(h.updated_at || h.created_at || new Date()).getTime()));
+                    const lastActiveCreatedTime = activeHabits.length > 0
+                        ? Math.max(...activeHabits.map(h => new Date(h.created_at || new Date()).getTime()))
+                        : 0;
+                    hasUnusedReward = lastIntegratedTime > lastActiveCreatedTime;
+                }
+                setRecentlyIntegrated(hasUnusedReward);
 
                 if (activeHabits.length === 0) {
                     navigate('/setup');
                     return;
                 }
+
+                // 1.5 Get habit healths for Layer B
+                const hHealth: Record<string, any> = {};
+                for (const h of activeHabits) {
+                    // Evaluamos los últimos 3 días para health
+                    hHealth[h.id] = await habitService.getHabitHealth(h.id, 3);
+                }
+                setHabitsHealth(hHealth);
 
                 // 2. Get today's habit logs
                 const { data: logs } = await supabase
@@ -149,18 +178,24 @@ export function Ciclo() {
 
                 // 5. Check for N+1 intervention (Yesterday's anomaly)
                 if (!sumData) { // Only check if today isn't closed yet
-                    const createdAt = new Date(profile?.created_at || user?.created_at || new Date());
+                    const createdAtRaw = new Date(profile?.created_at || user?.created_at || new Date());
                     const now = new Date();
-                    const diffDays = (now.getTime() - createdAt.getTime()) / (1000 * 3600 * 24);
 
-                    setIsCalibrating(diffDays <= 7);
+                    // Calcular diferencia de días calendario (truncando a medianoche local)
+                    const createdMidnight = new Date(createdAtRaw.getFullYear(), createdAtRaw.getMonth(), createdAtRaw.getDate());
+                    const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const diffDaysCalendar = (nowMidnight.getTime() - createdMidnight.getTime()) / (1000 * 3600 * 24);
 
-                    if (diffDays > 7) {
+                    const currentDayStr = Math.floor(diffDaysCalendar) + 1;
+                    setIsCalibrating(currentDayStr <= 7);
+                    setCalibrationDay(Math.max(1, Math.min(7, currentDayStr)));
+
+                    if (diffDaysCalendar > 7) {
                         const yesterdaySummary = await habitService.getDailySummary(user.id, yesterdayStr);
-                        if (yesterdaySummary?.operational_state === 'Riesgo' || yesterdaySummary?.operational_state === 'Regulación') {
+                        if (yesterdaySummary?.operational_state === OPERATIONAL_STATES.RIESGO || yesterdaySummary?.operational_state === OPERATIONAL_STATES.REGULACION) {
                             setPendingIntervention({
                                 type: yesterdaySummary.operational_state,
-                                message: yesterdaySummary.operational_state === 'Riesgo'
+                                message: yesterdaySummary.operational_state === OPERATIONAL_STATES.RIESGO
                                     ? `Ayer detectamos [${profile?.anchor_2_symptoms || 'fuga de enfoque'}]. Para no romper el hilo, hoy te propongo activar el Protocolo de Protección (10% de esfuerzo).`
                                     : 'Tu sistema estuvo bajo estrés ayer. Prioricemos la estabilidad hoy con el Protocolo de Protección.'
                             });
@@ -176,7 +211,7 @@ export function Ciclo() {
         };
 
         fetchData();
-    }, [user, navigate, todayStr]);
+    }, [user, navigate, todayStr, yesterdayStr]);
 
     // Refresh if date changes (Midnight boundary)
     useEffect(() => {
@@ -303,7 +338,7 @@ export function Ciclo() {
 
         // Erosión de Resistencia: Energía Baja (<4) + Fricción de Hábito Alta (>7)
         const hasHighFrictionHabit = managedHabits.some(l => l.friction > 7);
-        if (summary.energy < 4 && (summary.friction > 7 || hasHighFrictionHabit)) {
+        if (summary.energy < BIO_THRESHOLDS.CRISIS_ENERGY && (summary.friction > BIO_THRESHOLDS.HIGH_FRICTION || hasHighFrictionHabit)) {
             return {
                 type: 'Estrés Sistémico',
                 message: 'Tu sistema está al límite. La fricción supera tu capacidad de carga actual.'
@@ -315,16 +350,15 @@ export function Ciclo() {
 
     const getOperationalState = () => {
         const anomaly = detectAnomalies();
-        if (anomaly?.type === 'Fuga de Enfoque') return 'Riesgo';
-        if (anomaly?.type === 'Estrés Sistémico') return 'Regulación';
+        if (anomaly?.type === 'Fuga de Enfoque') return OPERATIONAL_STATES.RIESGO;
+        if (anomaly?.type === 'Estrés Sistémico') return OPERATIONAL_STATES.REGULACION;
 
-        if (summary.energy > 7) return 'Expansión';
-        if (summary.energy > 4) return 'Sostén';
-        return 'Regulación';
+        if (summary.energy > 7) return OPERATIONAL_STATES.EXPANSION;
+        if (summary.energy > 4) return OPERATIONAL_STATES.SOSTEN;
+        return OPERATIONAL_STATES.REGULACION;
     };
 
     const handleDeleteEnergyEvent = async (id: string) => {
-        // No restriction here anymore, data accuracy is priority even after closure
         try {
             await habitService.deleteEnergyEvent(id);
             setEnergyEvents(prev => prev.filter(e => e.id !== id));
@@ -333,10 +367,14 @@ export function Ciclo() {
         }
     };
 
-    // Governance: Can only close if all habits are "interacted" (or we'll auto-interact them)
-    // Actually, according to plan, the button only appears when "100% managed".
+    // Governance: Can only close if all habits are "interacted"
     const managedCount = Object.keys(habitLogs).length;
     const isFullyManaged = managedCount === habits.length;
+
+    // Derived values for the UI
+    const calculatedFriction = managedCount > 0
+        ? Object.values(habitLogs).reduce((acc, curr) => acc + (curr.friction || 5), 0) / managedCount
+        : 5;
 
     if (isLoading) {
         return (
@@ -371,11 +409,49 @@ export function Ciclo() {
                 </header>
 
                 {isCalibrating && !isDayClosed && (
-                    <div className="mb-6 mx-1 px-4 py-3 bg-accent/20 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-500 shadow-sm border border-transparent">
-                        <Sparkles className="w-4 h-4 text-accent animate-pulse shrink-0" />
-                        <div>
-                            <p className="text-[10px] font-bold text-accent uppercase tracking-widest">Sincronización Biográfica</p>
-                            <p className="text-[9px] text-tertiary font-medium">HumanHab está aprendiendo tus ritmos. Las intervenciones se activarán en unos días.</p>
+                    <button
+                        onClick={() => setShowCalibrationInfo(true)}
+                        className="w-full text-left mb-6 mx-1 px-4 py-3 bg-accent/20 hover:bg-accent/30 rounded-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-500 shadow-sm border border-transparent transition-all active:scale-[0.98] group"
+                    >
+                        <div className="flex items-center gap-3">
+                            <Sparkles className="w-5 h-5 text-accent animate-pulse shrink-0" />
+                            <div>
+                                <p className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-2">
+                                    Sincronización Biográfica
+                                    <span className="bg-accent text-white text-[8px] px-1.5 py-0.5 rounded-sm">Día {calibrationDay}/7</span>
+                                </p>
+                                <p className="text-[9px] text-tertiary font-medium">HumanHab está aprendiendo tus ritmos diarios.</p>
+                            </div>
+                        </div>
+                        <Info className="w-4 h-4 text-accent/50 group-hover:text-accent transition-colors" />
+                    </button>
+                )}
+
+                {(coherenceStatus.state === OPERATIONAL_STATES.CASCADA || (calculatedFriction >= 8 && baselineEnergy < 5)) && (
+                    <div
+                        className="p-5 border-[1.5px] rounded-[32px] flex items-start gap-4 animate-in fade-in slide-in-from-top-2 duration-700 shadow-2xl relative overflow-hidden mb-6"
+                        style={{
+                            backgroundColor: 'var(--theme-glow)',
+                            borderColor: 'rgba(var(--theme-accent-rgb), 0.3)',
+                            boxShadow: '0 0 50px -10px var(--theme-glow) inset, 0 10px 30px -10px rgba(0,0,0,0.5)'
+                        }}
+                    >
+                        {/* Shimmer effect */}
+                        <div className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_4s_infinite]" />
+
+                        <div className="w-12 h-12 rounded-[20px] flex items-center justify-center shrink-0 shadow-inner relative"
+                            style={{ backgroundColor: 'rgba(var(--theme-accent-rgb), 0.15)', border: '1px solid rgba(var(--theme-accent-rgb), 0.3)' }}>
+                            <ShieldCheck className="w-6 h-6 z-10" style={{ color: 'var(--theme-accent)' }} />
+                            <div className="absolute inset-0 rounded-[20px] animate-pulse" style={{ boxShadow: '0 0 20px 0 var(--theme-glow)' }} />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[11px] font-black uppercase tracking-[0.2em] leading-tight mb-1.5"
+                                style={{ color: 'var(--theme-accent)' }}>
+                                Protocolo de Protección Integral
+                            </p>
+                            <p className="text-secondary text-[10px] font-medium leading-relaxed italic pr-2">
+                                Sistema biográfico en estado de redundancia. Te cubrimos la espalda bloqueando nueva carga cognitiva mientras tu baseline se estabiliza. Recuperate tranquilo.
+                            </p>
                         </div>
                     </div>
                 )}
@@ -405,12 +481,12 @@ export function Ciclo() {
                         const log = habitLogs[habit.id];
                         const isCompleted = log?.is_completed === true;
                         const isFailed = log?.is_completed === false;
-                        const hasInteracted = log?.is_completed !== undefined && log?.is_completed !== null;
 
                         return (
-                            <Card key={habit.id} className={`rounded-3xl border-transparent p-4 flex items-center gap-4 transition-all duration-300
+                            <Card key={habit.id} className={`rounded-[32px] p-4 flex items-center gap-4 transition-all duration-500
                             ${isDayClosed ? 'opacity-80' : ''}
-                            ${isCompleted ? 'bg-accent/5 ring-2 ring-accent' : isFailed ? 'bg-error/5 ring-2 ring-error' : 'bg-surface'}`}>
+                            ${isCompleted ? 'bg-accent/10 ring-1 ring-accent/30 shadow-[0_0_20px_-5px_var(--theme-glow)]' :
+                                    isFailed ? 'bg-white/5 opacity-60 grayscale ring-1 ring-white/10' : ''}`}>
 
                                 <div
                                     onClick={() => setSelectedHabit(habit)}
@@ -437,8 +513,8 @@ export function Ciclo() {
                                             </span>
                                         )}
                                     </div>
-                                    <p className={`text-[11px] truncate font-medium ${isCompleted ? 'text-accent' : isFailed ? 'text-error' : 'text-tertiary'}`}>
-                                        {isCompleted ? '¡Lo lograste!' : isFailed ? 'Se me complicó' : 'Estado: Pendiente'}
+                                    <p className={`text-[11px] truncate font-medium ${isCompleted ? 'text-accent' : isFailed ? 'text-tertiary' : 'text-secondary'}`}>
+                                        {isCompleted ? '¡Lo lograste!' : isFailed ? 'No realizado' : 'Estado: Pendiente'}
                                     </p>
                                 </div>
 
@@ -446,8 +522,8 @@ export function Ciclo() {
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => handleSetHabitStatus(habit.id, false)}
-                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all
-                                            ${isFailed ? 'bg-error text-white' : 'bg-main text-tertiary/40 hover:text-error hover:bg-error/10'}`}
+                                            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300
+                                            ${isFailed ? 'bg-white/10 text-white' : 'bg-main text-tertiary/40 hover:text-white hover:bg-white/10'}`}
                                         >
                                             <XCircle className="w-5 h-5" />
                                         </button>
@@ -462,47 +538,55 @@ export function Ciclo() {
                                 )}
 
                                 {isDayClosed && (
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-main
-                                    ${isCompleted ? 'text-success' : 'text-error'}`}>
-                                        {isCompleted ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-transparent
+                                    ${isCompleted ? 'text-accent' : 'text-tertiary/50'}`}>
+                                        {isCompleted ? <CheckCircle2 className="w-5 h-5 drop-shadow-[0_0_8px_var(--theme-glow)]" /> : <XCircle className="w-5 h-5" />}
                                     </div>
                                 )}
                             </Card>
                         );
                     })}
 
-                    {/* Subtile Expansion Suggestion */}
-                    {!isDayClosed && coherenceStatus.state === 'Expansión' && (
-                        <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-500">
-                            {(() => {
-                                const limits: Record<string, number> = {
-                                    'Principiante': 2,
-                                    'Intermedio': 3,
-                                    'Avanzado': 5
-                                };
-                                const limit = limits[userLevel] || 2;
-                                if (habits.length < limit) {
-                                    return (
+                    {/* Available Slot / Expansion Suggestion */}
+                    {!isDayClosed && (() => {
+                        const limits: Record<string, number> = {
+                            'Principiante': 2,
+                            'Intermedio': 3,
+                            'Avanzado': 5
+                        };
+                        const limit = limits[userLevel] || 2;
+
+                        if (habits.length < limit) {
+                            const isExpansion = coherenceStatus.state === OPERATIONAL_STATES.EXPANSION;
+
+                            const canAdd = habits.length === 0 || isExpansion || recentlyIntegrated;
+
+                            if (canAdd) {
+                                return (
+                                    <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-500">
                                         <button
                                             onClick={() => navigate('/setup')}
-                                            className="w-full h-14 rounded-[24px] bg-surface flex flex-col items-center justify-center transition-all hover:bg-accent/10 group relative overflow-hidden shadow-sm border border-transparent"
+                                            className={`w-full h-14 rounded-[24px] flex flex-col items-center justify-center transition-all group relative overflow-hidden shadow-sm border 
+                                                ${isExpansion ? 'bg-surface hover:bg-accent/10 border-transparent' : 'bg-transparent border-dashed border-yellow-500/30 hover:border-yellow-500 hover:bg-yellow-500/5'}`}
                                         >
                                             <div className="flex items-center gap-2">
-                                                <Plus className="w-4 h-4 text-accent" />
-                                                <span className="text-[10px] font-bold text-accent uppercase tracking-widest">
-                                                    Carga Óptima: Sumar Hábito
+                                                {isExpansion ? <Plus className="w-4 h-4 text-accent" /> : <Award className="w-4 h-4 text-yellow-500" />}
+                                                <span className={`text-[10px] font-bold uppercase tracking-widest ${isExpansion ? 'text-accent' : 'text-yellow-500'}`}>
+                                                    {isExpansion ? 'Fase Óptima: Sumar Hábito' : 'Premio Evolutivo: Sumar Hábito'}
                                                 </span>
                                             </div>
-                                            <span className="text-[8px] text-tertiary mt-0.5 tracking-wider italic">
-                                                Cupo Disponible: {habits.length}/{limit}
+                                            <span className={`text-[8px] mt-0.5 tracking-wider italic opacity-80 ${isExpansion ? 'text-accent' : 'text-yellow-500'}`}>
+                                                {isExpansion
+                                                    ? `Cupo: ${habits.length}/${limit} (El sistema sugiere crecimiento)`
+                                                    : `Integraste un hábito. Tienes luz verde para sumar uno nuevo.`}
                                             </span>
                                         </button>
-                                    );
-                                }
-                                return null;
-                            })()}
-                        </div>
-                    )}
+                                    </div>
+                                );
+                            }
+                        }
+                        return null;
+                    })()}
 
                     {/* Eventos Rápidos */}
                     <div className="pt-4 border-t border-white/5">
@@ -525,13 +609,13 @@ export function Ciclo() {
                                         className="flex items-center gap-3 bg-surface/50 border border-white/5 rounded-2xl p-3 animate-in slide-in-from-right duration-300"
                                     >
                                         <div className={`w-8 h-8 rounded-xl flex items-center justify-center
-                                        ${event.type === 'recarga' ? 'bg-success/10 text-success' : 'bg-error/10 text-error'}`}>
+                                        ${event.type === 'recarga' ? 'bg-accent/10 text-accent' : 'bg-white/5 text-tertiary'}`}>
                                             {event.type === 'recarga' ? <Zap className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                                         </div>
                                         <span className="flex-1 text-xs text-secondary font-medium">{event.label}</span>
                                         <button
                                             onClick={() => handleDeleteEnergyEvent(event.id)}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-tertiary hover:text-error hover:bg-error/10 transition-all"
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-tertiary hover:text-white hover:bg-white/10 transition-all"
                                         >
                                             <X className="w-4 h-4" />
                                         </button>
@@ -639,26 +723,40 @@ export function Ciclo() {
                             {(() => {
                                 // 1. Check for acute daily anomalies first
                                 const anomaly = detectAnomalies();
-                                let systemOpState = 'Expansión';
+                                let systemOpState: string = OPERATIONAL_STATES.EXPANSION;
 
-                                if (anomaly?.type === 'Fuga de Enfoque' || protectionActive) systemOpState = 'Riesgo';
-                                else if (anomaly?.type === 'Estrés Sistémico') systemOpState = 'Regulación';
+                                if (anomaly?.type === 'Fuga de Enfoque' || protectionActive) systemOpState = OPERATIONAL_STATES.RIESGO;
+                                else if (anomaly?.type === 'Estrés Sistémico') systemOpState = OPERATIONAL_STATES.REGULACION;
                                 else {
                                     // 2. If no acute anomaly today, fall back to the overarching System State (Coherence)
                                     const coh = coherenceStatus.state;
-                                    if (coh === 'Cascada') systemOpState = 'Cascada';
-                                    else if (coh === 'Riesgo' || coh === 'Inestable') systemOpState = 'Riesgo';
-                                    else if (coh === 'Regulación' || coh === 'Atención') systemOpState = 'Regulación';
-                                    else systemOpState = 'Expansión';
+                                    if (coh === OPERATIONAL_STATES.CASCADA) systemOpState = OPERATIONAL_STATES.CASCADA;
+                                    else if (coh === OPERATIONAL_STATES.RIESGO || coh === OPERATIONAL_STATES.INESTABLE) systemOpState = OPERATIONAL_STATES.RIESGO;
+                                    else if (coh === OPERATIONAL_STATES.REGULACION || coh === OPERATIONAL_STATES.ATENCION) systemOpState = OPERATIONAL_STATES.REGULACION;
+                                    else systemOpState = OPERATIONAL_STATES.EXPANSION;
                                 }
 
+                                // Layer B Check (Individual Habit Health)
+                                const health = habitsHealth[selectedHabit.id] || { consecutiveFails: 0, highFrictionDays: 0 };
+                                let isLayerBTriggered = false;
+                                if (rigidityLevel === 1 && health.consecutiveFails >= 3) isLayerBTriggered = true;
+                                if (rigidityLevel === 2 && health.consecutiveFails >= 2) isLayerBTriggered = true;
+                                if (rigidityLevel === 3 && (health.consecutiveFails >= 1 || habitLogs[selectedHabit.id]?.friction >= 8)) isLayerBTriggered = true;
+
+                                let activeProtocol: 'A' | 'B' | null = null;
                                 let multiplier = 1;
-                                if (systemOpState === 'Cascada') {
-                                    // SPRINT 8: Forced Intervention. Ignores user rigidity setting.
+
+                                if (isLayerBTriggered) {
+                                    activeProtocol = 'B';
+                                    multiplier = 0.1; // Default P.P. specific for habit
+                                } else if (selectedHabit.domain !== 'restaurador' && systemOpState === OPERATIONAL_STATES.CASCADA) {
+                                    activeProtocol = 'A';
                                     multiplier = 0.1;
-                                } else if (systemOpState === 'Riesgo') {
+                                } else if (selectedHabit.domain !== 'restaurador' && systemOpState === OPERATIONAL_STATES.RIESGO) {
+                                    activeProtocol = 'A';
                                     multiplier = rigidityLevel === 1 ? 0.1 : rigidityLevel === 2 ? 0.3 : 0.5;
-                                } else if (systemOpState === 'Regulación') {
+                                } else if (selectedHabit.domain !== 'restaurador' && systemOpState === OPERATIONAL_STATES.REGULACION) {
+                                    activeProtocol = 'A';
                                     multiplier = rigidityLevel === 1 ? 0.3 : rigidityLevel === 2 ? 0.5 : 0.8;
                                 }
 
@@ -670,10 +768,18 @@ export function Ciclo() {
                                 const maxSliderVal = baseQuantity;
 
                                 let message = selectedHabit.description || 'Enfoque y coherencia para el micro-protocolo de hoy.';
-                                if (systemOpState === 'Cascada') {
-                                    message = `[Alerta de Cascada] El sistema detectó sobrecarga estructural sostenida. Hemos reducido forzosamente tu carga a ${recommendedQuantity} ${unit} para evitar el burnout. Romper esta racha es tu única prioridad hoy.`;
-                                } else if (multiplier < 1) {
-                                    message = `[Micro-Intervención] Tu estado de sistema es ${coherenceStatus.state}. El protocolo sugiere reducir la exigencia a ${recommendedQuantity} ${unit}. Si lográs esto, la meta de hoy se considerará completada.`;
+                                if (activeProtocol === 'B') {
+                                    message = `[Micro-Protocolo Quirúrgico] Detectamos inconsistencia reciente. Activamos Escudo Nivel B. Tu única meta es ${recommendedQuantity} ${unit} para reconstruir inercia neural.`;
+                                } else if (systemOpState === OPERATIONAL_STATES.CASCADA) {
+                                    if (selectedHabit.domain === 'restaurador') {
+                                        message = `[Alerta de Cascada] Tu sistema está agotado. Proteger este hábito restaurador (${baseQuantity} ${unit}) es tu única prioridad vital hoy. No se reduce la meta.`;
+                                    } else {
+                                        message = `[Alerta de Cascada] El sistema detectó sobrecarga estructural. Hemos reducido forzosamente tu carga a ${recommendedQuantity} ${unit} para evitar el burnout.`;
+                                    }
+                                } else if (activeProtocol === 'A' && multiplier < 1) {
+                                    message = `[Intervención Capa A] Tu estado general es ${coherenceStatus.state}. El protocolo sugiere reducir la exigencia a ${recommendedQuantity} ${unit}. Si lográs esto, la meta de hoy se considerará completada.`;
+                                } else if (selectedHabit.domain === 'restaurador' && (systemOpState === OPERATIONAL_STATES.RIESGO || systemOpState === OPERATIONAL_STATES.REGULACION)) {
+                                    message = `[Clima: ${coherenceStatus.state}] Siendo un hábito vital (Restaurador), su exigencia no se recorta para proteger tu biología.`;
                                 }
 
                                 const cLog = habitLogs[selectedHabit.id];
@@ -779,13 +885,49 @@ export function Ciclo() {
                                             </div>
                                         </div>
 
-                                        <div className="pt-4">
-                                            <Button
-                                                onClick={() => setSelectedHabit(null)}
-                                                className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl"
-                                            >
-                                                Cerrar Detalle
-                                            </Button>
+                                        <div className="pt-6 border-t border-white/5 mt-4">
+                                            <h4 className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em] mb-4">Evolución Conductual</h4>
+
+                                            <div className="space-y-3">
+                                                <button
+                                                    onClick={async () => {
+                                                        if (confirm("Pausar: El hábito saldrá del ciclo diario pero mantendrá su historial. Podrás retomarlo luego. ¿Confirmar?")) {
+                                                            try {
+                                                                await habitService.updateHabit(selectedHabit.id, { status: 'paused', is_active: false });
+                                                                setHabits(habits.filter(h => h.id !== selectedHabit.id));
+                                                                setSelectedHabit(null);
+                                                            } catch (err) { alert("Error pausando hábito"); }
+                                                        }
+                                                    }}
+                                                    className="w-full text-left p-4 rounded-2xl bg-surface hover:bg-surface/80 border border-white/5 hover:border-accent/30 transition-all group"
+                                                >
+                                                    <span className="block text-[10px] font-bold text-primary uppercase tracking-widest mb-1 group-hover:text-accent transition-colors">Pausar Temporalmente</span>
+                                                    <span className="block text-[9px] text-tertiary">Libero carga cognitiva sin borrar mi historial biológico.</span>
+                                                </button>
+
+                                                <button
+                                                    onClick={async () => {
+                                                        if (confirm("Victoria: Este hábito pasará a tu ADN en el perfil y ya no ocupará un lugar en el ciclo diario. ¿Confirmar?")) {
+                                                            try {
+                                                                await habitService.updateHabit(selectedHabit.id, { status: 'integrated', is_active: false });
+                                                                setHabits(habits.filter(h => h.id !== selectedHabit.id));
+                                                                setSelectedHabit(null);
+                                                            } catch (err) { alert("Error integrando hábito"); }
+                                                        }
+                                                    }}
+                                                    className="w-full text-left p-4 rounded-2xl bg-accent/10 hover:bg-accent/20 border border-accent/20 transition-all group"
+                                                >
+                                                    <span className="block text-[10px] font-bold text-accent uppercase tracking-widest mb-1">Integrar al ADN</span>
+                                                    <span className="block text-[9px] text-tertiary">Este comportamiento ya está automatizado (fricción cero).</span>
+                                                </button>
+
+                                                <Button
+                                                    onClick={() => setSelectedHabit(null)}
+                                                    className="w-full py-4 text-[10px] font-bold tracking-[0.2em] uppercase rounded-2xl bg-transparent border border-white/5 text-primary hover:bg-white/5 mt-2"
+                                                >
+                                                    Volver
+                                                </Button>
+                                            </div>
                                         </div>
                                     </div>
                                 );
@@ -875,6 +1017,74 @@ export function Ciclo() {
                         </Card>
                     </div>
                 )}
+
+                {/* Dialogo Sistema Operativo Info */}
+                <AnimatePresence>
+                    {showCalibrationInfo && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-main/95 backdrop-blur-xl"
+                        >
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.95, opacity: 0 }}
+                                className="w-full max-w-sm bg-surface rounded-[40px] p-8 border border-accent/20 shadow-2xl relative overflow-hidden"
+                            >
+                                <button
+                                    onClick={() => setShowCalibrationInfo(false)}
+                                    className="absolute top-6 right-6 p-2 rounded-2xl bg-main/50 text-tertiary hover:text-primary transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="w-16 h-16 rounded-3xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-6 relative">
+                                        <div className="absolute inset-0 bg-accent/20 animate-ping rounded-3xl" style={{ animationDuration: '3s' }}></div>
+                                        <Activity className="w-8 h-8 relative z-10" />
+                                    </div>
+
+                                    <h2 className="text-xl font-bold text-primary mb-3">Silent Mode Activado</h2>
+                                    <div className="text-[10px] bg-accent text-white px-3 py-1 rounded-full uppercase tracking-[0.2em] font-bold mb-6">
+                                        Calibración: Día {calibrationDay} de 7
+                                    </div>
+
+                                    <div className="text-left space-y-4 mb-8">
+                                        <p className="text-[12px] text-tertiary leading-relaxed">
+                                            Durante tus primeros 7 días, el Sistema Experto entra en modo de <strong className="text-primary">Observación Silenciosa</strong>.
+                                        </p>
+                                        <div className="bg-main/50 p-4 rounded-2xl border border-white/5 space-y-3">
+                                            <div className="flex items-start gap-2">
+                                                <Target className="w-3 h-3 text-accent shrink-0 mt-0.5" />
+                                                <p className="text-[10px] text-secondary leading-tight">Mide tu <strong className="text-accent text-[9px]">Línea Base de Energía</strong> para entender cuál es tu nivel "Normal".</p>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <Activity className="w-3 h-3 text-accent shrink-0 mt-0.5" />
+                                                <p className="text-[10px] text-secondary leading-tight">Mide tu <strong className="text-accent text-[9px]">Velocidad de Recuperación</strong> tras días de alta fricción.</p>
+                                            </div>
+                                            <div className="flex items-start gap-2">
+                                                <ShieldCheck className="w-3 h-3 text-accent shrink-0 mt-0.5" />
+                                                <p className="text-[10px] text-secondary leading-tight">Suprime intervenciones proactivas y bloqueos bruscos para no generar rechazo temprano (Efecto Burnout de Onboarding).</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-[11px] text-tertiary italic text-center mt-2">
+                                            Al llegar al Día 8, tu Escudo Preventivo se optimizará para tu biología exacta.
+                                        </p>
+                                    </div>
+
+                                    <Button
+                                        onClick={() => setShowCalibrationInfo(false)}
+                                        className="w-full py-4 text-[10px] font-bold tracking-[0.2em] uppercase rounded-2xl bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent transition-colors"
+                                    >
+                                        Entendido
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 {/* N+1 Intervention Modal */}
                 {pendingIntervention && (

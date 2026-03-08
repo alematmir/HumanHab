@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
 import { habitService } from '../lib/habitService';
+import { BIO_THRESHOLDS, OPERATIONAL_STATES, PROTOCOLS } from '../config/bioConfig';
+import { systemLogs } from '../lib/logService';
 
 export interface CoherenceStatus {
     state: string;
@@ -20,9 +22,9 @@ export interface RecoverySpeedData {
 export function useCoherence() {
     const { user } = useAuthStore();
     const [status, setStatus] = useState<CoherenceStatus>({
-        state: 'Estable',
+        state: OPERATIONAL_STATES.STABLE,
         color: 'success',
-        protocol: 'Mantenimiento',
+        protocol: PROTOCOLS.MAINTENANCE,
         message: 'El sistema mantiene la sincronización entre los hábitos registrados y los ciclos biológicos.'
     });
     const [recoverySpeed, setRecoverySpeed] = useState<RecoverySpeedData | null>(null);
@@ -37,6 +39,7 @@ export function useCoherence() {
             computedBaseline = Number((sum / data.length).toFixed(1));
         }
         setBaselineEnergy(computedBaseline);
+        systemLogs.addLog('Coherence', `Baseline dinámico calculado: ${computedBaseline}`, 'info');
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -49,18 +52,18 @@ export function useCoherence() {
             const diffTime = today.getTime() - latestLogDate.getTime();
             const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-            if (diffDays > 2) {
+            if (diffDays > BIO_THRESHOLDS.SYNC_BREACH_DAYS) {
                 return {
-                    state: 'Inestable',
+                    state: OPERATIONAL_STATES.INESTABLE,
                     color: 'error',
-                    protocol: 'Recuperación',
+                    protocol: PROTOCOLS.RECOVERY,
                     message: 'Varios días sin registro detectados. Prioriza la rapidez de recuperación para volver al ritmo basal.'
                 };
-            } else if (diffDays === 2) {
+            } else if (diffDays === BIO_THRESHOLDS.SYNC_BREACH_DAYS) {
                 return {
-                    state: 'Atención',
+                    state: OPERATIONAL_STATES.ATENCION,
                     color: 'warning',
-                    protocol: 'Desincronización',
+                    protocol: PROTOCOLS.DESYNC,
                     message: 'Detectamos un vacío ayer. Es vital retomar hoy para mantener la inercia del sistema.'
                 };
             }
@@ -71,14 +74,15 @@ export function useCoherence() {
                 const day1 = data[0];
                 const day2 = data[1];
 
-                const isDay1Crisis = day1.operational_state === 'Regulación' || day1.operational_state === 'Riesgo' || day1.energy < 4;
-                const isDay2Crisis = day2.operational_state === 'Regulación' || day2.operational_state === 'Riesgo' || day2.energy < 4;
+                const isDay1Crisis = day1.operational_state === OPERATIONAL_STATES.REGULACION || day1.operational_state === OPERATIONAL_STATES.RIESGO || day1.energy < BIO_THRESHOLDS.CRISIS_ENERGY;
+                const isDay2Crisis = day2.operational_state === OPERATIONAL_STATES.REGULACION || day2.operational_state === OPERATIONAL_STATES.RIESGO || day2.energy < BIO_THRESHOLDS.CRISIS_ENERGY;
 
                 if (isDay1Crisis && isDay2Crisis) {
+                    systemLogs.addLog('Coherence', 'ANOMALÍA: Cascada detectada (2 días de inestabilidad)', 'error');
                     return {
-                        state: 'Cascada',
+                        state: OPERATIONAL_STATES.CASCADA,
                         color: 'error',
-                        protocol: 'Intervención Preventiva',
+                        protocol: PROTOCOLS.PREVENTIVE_INTERVENTION,
                         message: 'Disfunción en cascada detectada. El escudo adaptativo bloqueará nueva carga hasta estabilizar el sistema.'
                     };
                 }
@@ -88,30 +92,30 @@ export function useCoherence() {
             // --- 2. SPRINT 8: BASELINE DINÁMICO ---
             if (data[0].operational_state) {
                 const state = data[0].operational_state;
-                if (state === 'Riesgo') {
+                if (state === OPERATIONAL_STATES.RIESGO) {
                     return {
-                        state: 'Riesgo',
+                        state: OPERATIONAL_STATES.RIESGO,
                         color: 'error',
-                        protocol: 'Protección Activa',
+                        protocol: PROTOCOLS.ACTIVE_PROTECTION,
                         message: 'Fricción inusual. Bajemos el peso antes de que se vuelva crónico.'
                     };
                 }
-                if (state === 'Regulación') {
+                if (state === OPERATIONAL_STATES.REGULACION) {
                     return {
-                        state: 'Regulación',
+                        state: OPERATIONAL_STATES.REGULACION,
                         color: 'warning',
-                        protocol: 'Supervivencia',
+                        protocol: PROTOCOLS.SURVIVAL,
                         message: 'Tu sistema exige descanso. Todo es negociable hoy menos la constancia.'
                     };
                 }
-                if (state === 'Expansión') {
+                if (state === OPERATIONAL_STATES.EXPANSION) {
                     // Prevent sudden jumps: Ensure the last 3 days do not contain chronic stress.
-                    const recentInstability = data.slice(1, 4).some(d => d.operational_state === 'Regulación' || d.operational_state === 'Riesgo');
+                    const recentInstability = data.slice(1, 4).some(d => d.operational_state === OPERATIONAL_STATES.REGULACION || d.operational_state === OPERATIONAL_STATES.RIESGO);
                     if (recentInstability) {
                         return {
-                            state: 'Sostén',
+                            state: OPERATIONAL_STATES.SOSTEN,
                             color: 'success',
-                            protocol: 'Mantenimiento',
+                            protocol: PROTOCOLS.MAINTENANCE,
                             message: 'Sistema en equilibrio. Consolida esta base antes de buscar expansión (día a día).'
                         };
                     }
@@ -120,27 +124,27 @@ export function useCoherence() {
                     // Si el sistema clasificó 'Expansión' pero tu energía real NO SUPERÓ (Baseline + 1.0)
                     // Y TAMPOCO tienes una energía alta estructural (>= 8), 
                     // lo anclamos a Sostén para no ser falsamente optimistas si estabas muy bajo.
-                    if (data[0].energy < 8 && data[0].energy < (computedBaseline + 1)) {
+                    if (data[0].energy < BIO_THRESHOLDS.EXPANSION_ENERGY && data[0].energy < (computedBaseline + 1)) {
                         return {
-                            state: 'Sostén',
+                            state: OPERATIONAL_STATES.SOSTEN,
                             color: 'success',
-                            protocol: 'Mantenimiento',
+                            protocol: PROTOCOLS.MAINTENANCE,
                             message: 'Tu energía mejoró, pero aún está cerca de tu promedo basal. Consolida esta estabilidad.'
                         };
                     }
 
                     return {
-                        state: 'Expansión',
+                        state: OPERATIONAL_STATES.EXPANSION,
                         color: 'success',
-                        protocol: 'Progresión',
+                        protocol: PROTOCOLS.PROGRESSION,
                         message: 'Sistema vibrante por encima del promedio basal. Listo para absorber nueva carga.'
                     };
                 }
-                if (state === 'Sostén' || state === 'Estable') {
+                if (state === OPERATIONAL_STATES.SOSTEN || state === OPERATIONAL_STATES.STABLE) {
                     return {
-                        state: 'Sostén',
+                        state: OPERATIONAL_STATES.SOSTEN,
                         color: 'success',
-                        protocol: 'Mantenimiento',
+                        protocol: PROTOCOLS.MAINTENANCE,
                         message: `Sistema en equilibrio cercano a tu media estructural (${computedBaseline}/10).`
                     };
                 }
@@ -148,36 +152,36 @@ export function useCoherence() {
 
             // Fallbacks si no hay operational state
             if (data.length >= 2) {
-                const consecutiveHighFriction = data.slice(0, 2).every(s => s.friction >= 7);
+                const consecutiveHighFriction = data.slice(0, 2).every(s => s.friction >= BIO_THRESHOLDS.HIGH_FRICTION);
                 if (consecutiveHighFriction) {
                     return {
-                        state: 'Inestable',
+                        state: OPERATIONAL_STATES.INESTABLE,
                         color: 'error',
-                        protocol: 'Recuperación',
+                        protocol: PROTOCOLS.RECOVERY,
                         message: 'Se han detectado 2 o más días consecutivos de alta fricción ambiental. Activa protocolos de protección.'
                     };
-                } else if (data[0].friction >= 7 || data[0].energy <= 3) {
+                } else if (data[0].friction >= BIO_THRESHOLDS.HIGH_FRICTION || data[0].energy <= BIO_THRESHOLDS.CRISIS_ENERGY - 1) {
                     return {
-                        state: 'Atención',
+                        state: OPERATIONAL_STATES.ATENCION,
                         color: 'warning',
-                        protocol: 'Alerta',
+                        protocol: PROTOCOLS.ALERT,
                         message: 'El balance de ayer mostró alta fricción. Monitoreo constante hoy.'
                     };
                 }
-            } else if (data[0].friction >= 7) {
+            } else if (data[0].friction >= BIO_THRESHOLDS.HIGH_FRICTION) {
                 return {
-                    state: 'Atención',
+                    state: OPERATIONAL_STATES.ATENCION,
                     color: 'warning',
-                    protocol: 'Monitoreo',
+                    protocol: PROTOCOLS.MONITORING,
                     message: 'Fricción inicial elevada detectada. Enfócate en la simplicidad para consolidar tus hábitos.'
                 };
             }
         }
 
         return {
-            state: 'Estable',
+            state: OPERATIONAL_STATES.STABLE,
             color: 'success',
-            protocol: 'Mantenimiento',
+            protocol: PROTOCOLS.MAINTENANCE,
             message: data?.length === 0
                 ? 'Bienvenido a HumanHab. Comenzaremos a medir tu bio-ritmo.'
                 : `Sistema calibrado en baseline (${computedBaseline}/10).`
@@ -194,10 +198,12 @@ export function useCoherence() {
                 .select('*')
                 .eq('user_id', user.id)
                 .order('date', { ascending: false })
-                .limit(14);
+                .limit(BIO_THRESHOLDS.RECOVERY_DAYS_WINDOW);
 
             if (error) throw error;
-            setStatus(analyze(data || []));
+            const newState = analyze(data || []);
+            systemLogs.addLog('Coherence', `Estado actualizado: ${newState.state}`, 'success');
+            setStatus(newState);
 
             // Fetch Recovery Speed
             const rsData = await habitService.calculateRecoverySpeed(user.id);

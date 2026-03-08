@@ -6,9 +6,11 @@ export interface Habit {
     title: string;
     description: string;
     icon: string;
-    is_active: boolean;
+    is_active: boolean; // Legacy check, use status whenever possible
+    status: 'active' | 'integrated' | 'paused';
     target_quantity?: number;
     target_unit?: string;
+    domain: 'restaurador' | 'carga_cognitiva' | 'carga_fisica';
     created_at?: string;
     updated_at?: string;
 }
@@ -21,6 +23,7 @@ export interface UserProfile {
     level: string;
     habit_limit: number;
     rigidity_level: number;
+    role: 'admin' | 'tester' | 'user';
     anchor_2_symptoms?: string;
     anchor_9_symptoms?: string;
     diagnostic_answers?: any;
@@ -68,7 +71,21 @@ export const habitService = {
             .from('habits')
             .select('*')
             .eq('user_id', userId)
+            // Filtro hibrido por robustez durante transicion: status prioritario
+            .eq('status', 'active')
             .eq('is_active', true);
+
+        if (error) throw error;
+        return data as Habit[];
+    },
+
+    async getHabitsByStatus(userId: string, status: 'active' | 'integrated' | 'paused') {
+        const { data, error } = await supabase
+            .from('habits')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('status', status)
+            .order('updated_at', { ascending: false });
 
         if (error) throw error;
         return data as Habit[];
@@ -323,6 +340,52 @@ export const habitService = {
             totalCycles: recoveryCycles,
             currentCrisisDuration: inCrisis ? currentCrisisDays : 0,
             isInCrisis: inCrisis
+        };
+    },
+
+    async getHabitHealth(habitId: string, days: number = 3) {
+        // Obtenemos los logs recientes del hábito para evaluar la Capa B
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+        const startDateStr = startDate.toISOString().split('T')[0];
+
+        const { data: logs, error } = await supabase
+            .from('habit_logs')
+            .select('date, is_completed, friction')
+            .eq('habit_id', habitId)
+            .gte('date', startDateStr)
+            .order('date', { ascending: false });
+
+        if (error) throw error;
+
+        let consecutiveFails = 0;
+        let highFrictionDays = 0;
+
+        // Logs are ordered by newest first
+        if (logs && logs.length > 0) {
+            for (const log of logs) {
+                if (log.is_completed === false) {
+                    consecutiveFails++;
+                } else {
+                    // Si se completó un día reciente, se corta la racha de fallos consecutivos
+                    break;
+                }
+            }
+
+            for (const log of logs) {
+                if (log.friction >= 7) {
+                    highFrictionDays++;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        return {
+            consecutiveFails,
+            highFrictionDays,
+            needsProtection: consecutiveFails >= 2, // Threshold default
+            needsInertia: highFrictionDays >= 3 // Threshold default
         };
     }
 };

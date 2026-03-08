@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { ChevronRight, LogOut, Sun, Moon, User, Settings, Layers, ShieldCheck, AlertCircle, BookOpen, X } from 'lucide-react';
+import { ChevronRight, LogOut, Sun, Moon, User, Settings, Layers, ShieldCheck, AlertCircle, BookOpen, X, Sparkles, Droplets, Dumbbell, Target, Zap, History, Heart, Brain, Coffee, Award } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { habitService } from '../lib/habitService';
@@ -17,18 +17,23 @@ export function Perfil() {
     const [isSaving, setIsSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [showRigidityConfirm, setShowRigidityConfirm] = useState<{ level: number, label: string } | null>(null);
-    const [isLight, setIsLight] = useState(() =>
-        typeof document !== 'undefined' ? document.documentElement.classList.contains('light') : false
-    );
     const [showManual, setShowManual] = useState(false);
-
+    const [integratedHabits, setIntegratedHabits] = useState<any[]>([]);
+    const [selectedIntegratedHabit, setSelectedIntegratedHabit] = useState<any | null>(null);
     useEffect(() => {
         if (!user) return;
-        const fetchProfile = async () => {
+        const fetchData = async () => {
             const data = await habitService.getUserProfile(user.id);
             if (data) setProfile(data as any);
+
+            try {
+                const integrated = await habitService.getHabitsByStatus(user.id, 'integrated');
+                setIntegratedHabits(integrated);
+            } catch (err) {
+                console.error("Error fetching integrated habits", err);
+            }
         };
-        fetchProfile();
+        fetchData();
     }, [user]);
 
     const handleRigidityChange = async (newLevel: number, force: boolean = false) => {
@@ -64,16 +69,21 @@ export function Perfil() {
         }
     };
 
-    const toggleTheme = () => {
-        const isCurrentlyLight = document.documentElement.classList.contains('light');
-        if (isCurrentlyLight) {
-            document.documentElement.classList.remove('light');
-            localStorage.setItem('theme', 'dark');
-            setIsLight(false);
-        } else {
-            document.documentElement.classList.add('light');
-            localStorage.setItem('theme', 'light');
-            setIsLight(true);
+    const getIcon = (iconName: string, className: string = "w-5 h-5") => {
+        switch (iconName) {
+            case 'Sparkles': return <Sparkles className={className} />;
+            case 'Droplets': return <Droplets className={className} />;
+            case 'BookOpen': return <BookOpen className={className} />;
+            case 'Dumbbell': return <Dumbbell className={className} />;
+            case 'Moon': return <Moon className={className} />;
+            case 'Target': return <Target className={className} />;
+            case 'Zap': return <Zap className={className} />;
+            case 'History': return <History className={className} />;
+            case 'Heart': return <Heart className={className} />;
+            case 'Brain': return <Brain className={className} />;
+            case 'Coffee': return <Coffee className={className} />;
+            case 'Sun': return <Sun className={className} />;
+            default: return <Target className={className} />;
         }
     };
 
@@ -101,6 +111,47 @@ export function Perfil() {
 
                 <section>
                     <div className="flex items-center justify-between px-1 mb-4">
+                        <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Tu ADN Conductual</h2>
+                        <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20 flex items-center gap-1">
+                            <Award className="w-3 h-3 text-yellow-500" /> {integratedHabits.length} Integrados
+                        </span>
+                    </div>
+                    {integratedHabits.length > 0 ? (
+                        <div className="space-y-3">
+                            {integratedHabits.map(habit => (
+                                <button
+                                    key={habit.id}
+                                    onClick={() => setSelectedIntegratedHabit(habit)}
+                                    className="w-full text-left bg-surface/30 p-4 rounded-3xl border border-yellow-500/20 flex items-center justify-between relative overflow-hidden group hover:border-yellow-500/50 hover:bg-yellow-500/5 transition-all"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-r from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                    <div className="flex items-center gap-4 z-10 w-full">
+                                        <div className="relative">
+                                            <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-500">
+                                                {getIcon(habit.icon, "w-5 h-5")}
+                                            </div>
+                                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-surface rounded-full flex items-center justify-center border border-yellow-500/20 overflow-hidden shadow-[0_0_8px_rgba(234,179,8,0.3)]">
+                                                <Award className="w-3 h-3 text-yellow-500" />
+                                            </div>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="text-sm font-bold text-primary group-hover:text-yellow-500 transition-colors">{habit.title}</h3>
+                                            <p className="text-[9px] text-tertiary uppercase tracking-widest mt-0.5">Conquistado — {habit.domain}</p>
+                                        </div>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="bg-surface/30 border border-dashed border-white/5 rounded-3xl p-6 text-center flex flex-col items-center">
+                            <Award className="w-8 h-8 text-yellow-500/30 mb-2" />
+                            <p className="text-[11px] text-tertiary italic max-w-[200px]">Aún no hay hábitos integrados biológicamente. Tu constancia forjará medallas de maestría.</p>
+                        </div>
+                    )}
+                </section>
+
+                <section>
+                    <div className="flex items-center justify-between px-1 mb-4">
                         <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Baseline Bio-Conductual</h2>
                         <span className="text-[10px] font-bold text-accent uppercase tracking-widest flex items-center gap-1">
                             <Layers className="w-3 h-3" /> Promedio 14D
@@ -124,21 +175,6 @@ export function Perfil() {
                 <section>
                     <h2 className="text-[10px] font-bold text-tertiary uppercase tracking-widest mb-4 px-1">Configuración del Sistema</h2>
                     <div className="bg-surface rounded-3xl border border-surface divide-y divide-white/5 overflow-hidden">
-                        <button
-                            onClick={toggleTheme}
-                            className="w-full flex items-center justify-between p-5 text-left hover:bg-white/[0.02] transition-colors group"
-                        >
-                            <div className="flex items-center gap-4">
-                                <Settings className="w-5 h-5 text-tertiary opacity-50" />
-                                <span className="text-sm font-bold text-primary">Tema: {isLight ? 'Claro' : 'Oscuro'}</span>
-                            </div>
-                            {isLight ? (
-                                <Moon className="w-4 h-4 text-tertiary" />
-                            ) : (
-                                <Sun className="w-4 h-4 text-tertiary" />
-                            )}
-                        </button>
-
                         <button
                             onClick={() => navigate('/setup')}
                             className="w-full flex items-center justify-between p-5 text-left hover:bg-white/[0.02] transition-colors group"
@@ -218,37 +254,39 @@ export function Perfil() {
             </div>
 
             {/* Rigidity Confirmation Modal */}
-            {showRigidityConfirm && (
-                <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-main/95 backdrop-blur-xl animate-in fade-in duration-500">
-                    <Card className="w-full max-w-sm bg-surface rounded-[40px] p-8 border-warning/20 shadow-2xl relative overflow-hidden">
-                        <div className="flex flex-col items-center text-center">
-                            <div className="w-16 h-16 rounded-3xl bg-warning/10 text-warning flex items-center justify-center mb-6">
-                                <AlertCircle className="w-8 h-8" />
-                            </div>
+            {
+                showRigidityConfirm && (
+                    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-main/95 backdrop-blur-xl animate-in fade-in duration-500">
+                        <Card className="w-full max-w-sm bg-surface rounded-[40px] p-8 border-warning/20 shadow-2xl relative overflow-hidden">
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-16 h-16 rounded-3xl bg-warning/10 text-warning flex items-center justify-center mb-6">
+                                    <AlertCircle className="w-8 h-8" />
+                                </div>
 
-                            <h2 className="text-xl font-bold text-primary mb-3">¿Bajar Rigurosidad a {showRigidityConfirm.label}?</h2>
-                            <p className="text-sm text-tertiary leading-relaxed mb-8">
-                                Estás activando la <strong>Ley de Descenso</strong>. Podrás volver a subir de nivel únicamente si cumples con la **Ley de Base Biológica** (Energía prom. &gt; 7.0 por 7 días).
-                            </p>
+                                <h2 className="text-xl font-bold text-primary mb-3">¿Bajar Rigurosidad a {showRigidityConfirm.label}?</h2>
+                                <p className="text-sm text-tertiary leading-relaxed mb-8">
+                                    Estás activando la <strong>Ley de Descenso</strong>. Podrás volver a subir de nivel únicamente si cumples con la **Ley de Base Biológica** (Energía prom. &gt; 7.0 por 7 días).
+                                </p>
 
-                            <div className="space-y-3 w-full">
-                                <Button
-                                    onClick={() => handleRigidityChange(showRigidityConfirm.level, true)}
-                                    className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl bg-warning hover:bg-warning/90 border-transparent text-white"
-                                >
-                                    Confirmar Descenso
-                                </Button>
-                                <button
-                                    onClick={() => setShowRigidityConfirm(null)}
-                                    className="w-full py-4 text-xs font-bold text-tertiary hover:text-primary uppercase tracking-[0.2em] transition-colors"
-                                >
-                                    Cancelar
-                                </button>
+                                <div className="space-y-3 w-full">
+                                    <Button
+                                        onClick={() => handleRigidityChange(showRigidityConfirm.level, true)}
+                                        className="w-full py-4 text-xs font-bold tracking-[0.2em] uppercase rounded-2xl bg-warning hover:bg-warning/90 border-transparent text-white"
+                                    >
+                                        Confirmar Descenso
+                                    </Button>
+                                    <button
+                                        onClick={() => setShowRigidityConfirm(null)}
+                                        className="w-full py-4 text-xs font-bold text-tertiary hover:text-primary uppercase tracking-[0.2em] transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    </Card>
-                </div>
-            )}
+                        </Card>
+                    </div>
+                )
+            }
 
             {/* Manual Modal */}
             <AnimatePresence>
@@ -327,10 +365,84 @@ export function Perfil() {
                 )}
             </AnimatePresence>
 
+            {/* Integrated Habit Detail Modal */}
+            <AnimatePresence>
+                {selectedIntegratedHabit && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-main/95 backdrop-blur-xl"
+                    >
+                        <motion.div
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            className="w-full max-w-sm bg-surface sm:rounded-[40px] rounded-t-[40px] p-8 border-t sm:border border-yellow-500/20 shadow-2xl relative"
+                        >
+                            <button
+                                onClick={() => setSelectedIntegratedHabit(null)}
+                                className="absolute top-6 right-6 p-2 rounded-2xl bg-main/50 text-tertiary hover:text-primary transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
+                            <div className="flex flex-col items-center text-center">
+                                <div className="relative mb-6">
+                                    <div className="w-20 h-20 rounded-3xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-500">
+                                        {getIcon(selectedIntegratedHabit.icon, "w-10 h-10")}
+                                    </div>
+                                    <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-surface rounded-full flex items-center justify-center border border-yellow-500/20 shadow-[0_0_15px_rgba(234,179,8,0.4)]">
+                                        <Award className="w-5 h-5 text-yellow-500" />
+                                    </div>
+                                </div>
+
+                                <h2 className="text-2xl font-bold text-primary mb-1">{selectedIntegratedHabit.title}</h2>
+                                <div className="flex items-center gap-2 justify-center mb-6">
+                                    <span className="text-[10px] text-tertiary uppercase tracking-widest">
+                                        Dominio: {selectedIntegratedHabit.domain}
+                                    </span>
+                                    <span className="w-1 h-1 rounded-full bg-white/10"></span>
+                                    <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">
+                                        Valor Alcanzado: {selectedIntegratedHabit.target_quantity} {selectedIntegratedHabit.target_unit}
+                                    </span>
+                                </div>
+
+                                <div className="w-full bg-main/50 rounded-2xl p-5 border border-white/5 space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-secondary">Añadido al Sistema</span>
+                                        <span className="text-xs font-bold text-primary">
+                                            {new Date(selectedIntegratedHabit.created_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-secondary">Consolidación</span>
+                                        <span className="text-xs font-bold text-yellow-500">
+                                            {new Date(selectedIntegratedHabit.updated_at).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </span>
+                                    </div>
+                                    <div className="pt-4 mt-4 border-t border-white/5">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-secondary">Tiempo hasta Integración</span>
+                                            <span className="text-sm font-bold text-primary">
+                                                {Math.max(1, Math.ceil((new Date(selectedIntegratedHabit.updated_at).getTime() - new Date(selectedIntegratedHabit.created_at).getTime()) / (1000 * 3600 * 24)))} Días
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="mt-6 text-[10px] text-tertiary/60 italic leading-relaxed px-4">
+                                    Este hábito ya es parte de tu arquitectura metabólica. Tu biología lo sostiene sin esfuerzo consciente.
+                                </p>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <div className="mt-16 text-center">
                 <p className="text-[10px] font-bold text-tertiary uppercase tracking-[0.2em]">HumanHab MVP3 • v2.1.0</p>
                 <p className="text-[9px] text-tertiary/40 mt-1 uppercase tracking-widest italic">Adaptive Bio-Hacking Interface</p>
             </div>
-        </div>
+        </div >
     );
 }

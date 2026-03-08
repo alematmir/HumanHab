@@ -42,21 +42,27 @@
         --blue-800: #16263F;
         --blue-700: #1E2F52;
         --blue-600: #27406E;
+
+        /* Adaptive Theme Defaults (Will be overridden by Context) */
+        --theme-accent: #8A80FF;
+        --theme-accent-rgb: 138, 128, 255;
+        --theme-glow: rgba(138, 128, 255, 0.15);
+        --theme-surface: rgba(22, 38, 63, 0.4);
+        /* Volvemos a un azul oscuro traslúcido */
+        --theme-main: #0a0f18;
+        --aura-intensity: 0.4;
+        --aura-speed: 8s;
+        --ui-rigidity: 0px;
+
+        /* Overriding Primary Tailwind vars to follow Adaptive Theme */
+        --color-bg-main: var(--theme-main);
+        --color-bg-surface: var(--theme-surface);
+        --color-bg-card: var(--theme-surface);
+        --color-brand-accent: var(--theme-accent);
+        --color-text-primary: #FAFAFA;
+        --color-text-secondary: #C2C2C2;
     }
 
-    .light {
-        --color-bg-main: #FAFAFA;
-        --color-bg-surface: #F2F2F2;
-        --color-bg-card: #FAFAFA;
-        --color-border: #E2E2E2;
-
-        --color-text-primary: #1A1A1A;
-        --color-text-secondary: #5A5A5A;
-        --color-text-tertiary: #737373;
-
-        --color-brand-accent: #4B42B2;
-        --color-brand-accent-hover: #3F3696;
-    }
 
     body {
         @apply bg-main text-primary font-sans antialiased selection:bg-accent selection:text-white;
@@ -65,19 +71,80 @@
 
     /* Premium Glassmorphism */
     .glass-card {
-        background-color: color-mix(in srgb, var(--color-bg-card) 40%, transparent);
-        @apply backdrop-blur-md border border-white/5 rounded-2xl;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        background-color: var(--theme-surface);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.03);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        /* Highlight sutil */
+        @apply rounded-[32px] transition-all duration-700 ease-in-out;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+    }
+
+    .glass-card:hover {
+        border-color: rgba(var(--theme-accent-rgb), 0.2);
+        box-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.6), 0 0 20px -5px var(--theme-glow), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+        transform: translateY(-2px);
     }
 
     .glass-button {
-        background-color: color-mix(in srgb, var(--color-brand-accent) 20%, transparent);
-        border: 1px solid color-mix(in srgb, var(--color-brand-accent) 30%, transparent);
-        @apply backdrop-blur-sm rounded-xl transition-all duration-300;
+        background-color: rgba(var(--theme-accent-rgb), 0.15);
+        border: 1px solid rgba(var(--theme-accent-rgb), 0.2);
+        @apply backdrop-blur-sm rounded-2xl transition-all duration-500 ease-out;
     }
 
     .glass-button:hover {
-        background-color: color-mix(in srgb, var(--color-brand-accent) 30%, transparent);
+        background-color: rgba(var(--theme-accent-rgb), 0.25);
+        @apply border-white/30;
+        box-shadow: 0 0 15px var(--theme-glow);
+    }
+
+    /* Adaptive Background Aura */
+    .adaptive-aura {
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% -20%,
+                rgba(var(--theme-accent-rgb), calc(var(--aura-intensity) * 0.15)) 0%,
+                transparent 70%),
+            #0a0f18;
+        /* Near black foundation */
+    }
+
+    .adaptive-aura::after {
+        content: '';
+        position: absolute;
+        inset: -50%;
+        background: radial-gradient(circle at center,
+                rgba(var(--theme-accent-rgb), calc(var(--aura-intensity) * 0.08)) 0%,
+                transparent 50%);
+        animation: auraPulse var(--aura-speed) infinite ease-in-out;
+    }
+
+    @keyframes auraPulse {
+
+        0%,
+        100% {
+            transform: scale(1) translate(0, 0);
+            opacity: 0.5;
+        }
+
+        50% {
+            transform: scale(1.1) translate(20px, 10px);
+            opacity: 0.8;
+        }
+    }
+
+    @keyframes shimmer {
+        0% {
+            transform: translateX(-100%) skewX(-15deg);
+        }
+
+        50%,
+        100% {
+            transform: translateX(100%) skewX(-15deg);
+        }
     }
 
     /* Dynamic Gradients for states */

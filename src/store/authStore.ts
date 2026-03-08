@@ -5,21 +5,25 @@ import { supabase } from '../lib/supabase';
 interface AuthState {
     user: User | null;
     session: Session | null;
+    role: 'admin' | 'tester' | 'user' | null;
     isLoading: boolean;
     setUser: (user: User | null) => void;
     setSession: (session: Session | null) => void;
+    setRole: (role: 'admin' | 'tester' | 'user' | null) => void;
     signOut: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
     user: null,
     session: null,
+    role: null,
     isLoading: true,
     setUser: (user) => set({ user }),
     setSession: (session) => set({ session, isLoading: false }),
+    setRole: (role) => set({ role }),
     signOut: async () => {
         await supabase.auth.signOut();
-        set({ user: null, session: null });
+        set({ user: null, session: null, role: null });
     }
 }));
 

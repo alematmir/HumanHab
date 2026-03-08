@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
 import { habitService } from '../lib/habitService';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import {
@@ -33,14 +34,15 @@ interface ArsenalHabit {
     iconName: string;
     defaultQuantity: number;
     defaultUnit: string;
+    defaultDomain: 'restaurador' | 'carga_cognitiva' | 'carga_fisica';
 }
 
 const ARSENAL: ArsenalHabit[] = [
-    { id: 'ar_med', title: 'Meditación', description: 'Enfoca tu mente y reduce el ruido cognitivo.', icon: <Sparkles className="w-6 h-6" />, iconName: 'Sparkles', defaultQuantity: 10, defaultUnit: 'Minutos' },
-    { id: 'ar_hid', title: 'Hidratación', description: 'Mantén tu sistema biológico en estado óptimo.', icon: <Droplets className="w-6 h-6" />, iconName: 'Droplets', defaultQuantity: 2, defaultUnit: 'Litros' },
-    { id: 'ar_lec', title: 'Lectura', description: 'Expande tu base de conocimiento diario.', icon: <BookOpen className="w-6 h-6" />, iconName: 'BookOpen', defaultQuantity: 10, defaultUnit: 'Páginas' },
-    { id: 'ar_exe', title: 'Ejercicio', description: 'Activa tu motor metabólico y energía.', icon: <Dumbbell className="w-6 h-6" />, iconName: 'Dumbbell', defaultQuantity: 45, defaultUnit: 'Minutos' },
-    { id: 'ar_slp', title: 'Descanso', description: 'Optimiza tu recuperación nocturna.', icon: <Moon className="w-6 h-6" />, iconName: 'Moon', defaultQuantity: 8, defaultUnit: 'Horas' },
+    { id: 'ar_med', title: 'Meditación', description: 'Enfoca tu mente y reduce el ruido cognitivo.', icon: <Sparkles className="w-6 h-6" />, iconName: 'Sparkles', defaultQuantity: 10, defaultUnit: 'Minutos', defaultDomain: 'restaurador' },
+    { id: 'ar_hid', title: 'Hidratación', description: 'Mantén tu sistema biológico en estado óptimo.', icon: <Droplets className="w-6 h-6" />, iconName: 'Droplets', defaultQuantity: 2, defaultUnit: 'Litros', defaultDomain: 'restaurador' },
+    { id: 'ar_lec', title: 'Lectura', description: 'Expande tu base de conocimiento diario.', icon: <BookOpen className="w-6 h-6" />, iconName: 'BookOpen', defaultQuantity: 10, defaultUnit: 'Páginas', defaultDomain: 'carga_cognitiva' },
+    { id: 'ar_exe', title: 'Ejercicio', description: 'Activa tu motor metabólico y energía.', icon: <Dumbbell className="w-6 h-6" />, iconName: 'Dumbbell', defaultQuantity: 45, defaultUnit: 'Minutos', defaultDomain: 'carga_fisica' },
+    { id: 'ar_slp', title: 'Descanso', description: 'Optimiza tu recuperación nocturna.', icon: <Moon className="w-6 h-6" />, iconName: 'Moon', defaultQuantity: 8, defaultUnit: 'Horas', defaultDomain: 'restaurador' },
 ];
 
 const LEVEL_CONFIG: Record<string, { limit: number; message: string }> = {
@@ -74,6 +76,7 @@ export function SetupHabit() {
     const [manualIcon, setManualIcon] = useState('Plus');
     const [manualQuantity, setManualQuantity] = useState<number | string>(1);
     const [manualUnit, setManualUnit] = useState<string>('Vez');
+    const [manualDomain, setManualDomain] = useState<'restaurador' | 'carga_cognitiva' | 'carga_fisica'>('carga_cognitiva');
     const [selectedConfigs, setSelectedConfigs] = useState<Record<string, { quantity: number | string; unit: string }>>({});
 
     const CUSTOM_ICONS = [
@@ -90,6 +93,11 @@ export function SetupHabit() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pausedHabits, setPausedHabits] = useState<any[]>([]);
+
+    const [showEgoWarning, setShowEgoWarning] = useState(false);
+    const [pendingHabitsToSave, setPendingHabitsToSave] = useState<any[]>([]);
+    const [existingTitles, setExistingTitles] = useState<Set<string>>(new Set());
 
     useEffect(() => {
         if (!user) return;
@@ -107,11 +115,43 @@ export function SetupHabit() {
                 setUserLevel(data.level);
                 setHabitLimit(config.limit);
             }
+
+            try {
+                const paused = await habitService.getHabitsByStatus(user.id, 'paused');
+                setPausedHabits(paused);
+
+                const active = await habitService.getActiveHabits(user.id);
+                const integrated = await habitService.getHabitsByStatus(user.id, 'integrated');
+
+                const titles = new Set<string>();
+                active.forEach(h => titles.add(h.title.toLowerCase().trim()));
+                integrated.forEach(h => titles.add(h.title.toLowerCase().trim()));
+                setExistingTitles(titles);
+
+            } catch (err) {
+                console.error("Error fetching habits configuration", err);
+            }
+
             setIsLoading(false);
         };
 
         fetchProfile();
     }, [user]);
+
+    const handleResumeHabit = async (habitId: string) => {
+        if (!user) return;
+        setIsSaving(true);
+        try {
+            // Validating limits conceptually (though if they just resume, we might bypass the limit check to let them self-manage, or enforce it). Let's enforce it briefly if we want to be strict.
+            // For now, let's just resume it directly as an action independent of the Arsenal selection.
+            await habitService.updateHabit(habitId, { status: 'active', is_active: true });
+            navigate('/');
+        } catch (err) {
+            console.error("Error resuming habit", err);
+            setError("Error al intentar reactivar el hábito.");
+            setIsSaving(false);
+        }
+    };
 
     const toggleSelection = (id: string | 'manual') => {
         if (id === 'manual') {
@@ -166,34 +206,51 @@ export function SetupHabit() {
             return;
         }
 
+        const habitsToSave = selectedIds.map(id => {
+            const arsenal = ARSENAL.find(a => a.id === id);
+            const config = selectedConfigs[id] || { quantity: arsenal?.defaultQuantity || 1, unit: arsenal?.defaultUnit || 'Vez' };
+            return {
+                user_id: user.id,
+                title: arsenal?.title || 'Hábito',
+                description: arsenal?.description || '',
+                icon: arsenal?.iconName || 'Target',
+                is_active: true,
+                status: 'active' as const,
+                target_quantity: Number(config.quantity) || 1,
+                target_unit: config.unit,
+                domain: arsenal?.defaultDomain || 'carga_cognitiva'
+            };
+        });
+
+        if (isManualMode && manualTitle.trim()) {
+            habitsToSave.push({
+                user_id: user.id,
+                title: manualTitle,
+                description: manualDesc,
+                icon: manualIcon,
+                is_active: true,
+                status: 'active' as const,
+                target_quantity: Number(manualQuantity) || 1,
+                target_unit: manualUnit,
+                domain: manualDomain
+            });
+        }
+
+        // Ego Trap Check: Is there any title we are trying to add that already exists?
+        const hasDuplicate = habitsToSave.some(h => existingTitles.has(h.title.toLowerCase().trim()));
+
+        if (hasDuplicate) {
+            setPendingHabitsToSave(habitsToSave);
+            setShowEgoWarning(true);
+            return;
+        }
+
+        executeSave(habitsToSave);
+    };
+
+    const executeSave = async (habitsToSave: any[]) => {
         setIsSaving(true);
         try {
-            const habitsToSave = selectedIds.map(id => {
-                const arsenal = ARSENAL.find(a => a.id === id);
-                const config = selectedConfigs[id] || { quantity: arsenal?.defaultQuantity || 1, unit: arsenal?.defaultUnit || 'Vez' };
-                return {
-                    user_id: user.id,
-                    title: arsenal?.title || 'Hábito',
-                    description: arsenal?.description || '',
-                    icon: arsenal?.iconName || 'Target',
-                    is_active: true,
-                    target_quantity: Number(config.quantity) || 1,
-                    target_unit: config.unit
-                };
-            });
-
-            if (isManualMode && manualTitle.trim()) {
-                habitsToSave.push({
-                    user_id: user.id,
-                    title: manualTitle,
-                    description: manualDesc,
-                    icon: manualIcon,
-                    is_active: true,
-                    target_quantity: Number(manualQuantity) || 1,
-                    target_unit: manualUnit
-                });
-            }
-
             for (const h of habitsToSave) {
                 await habitService.createHabit(h);
             }
@@ -408,6 +465,32 @@ export function SetupHabit() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
+                                    <label className="text-[9px] font-bold text-tertiary uppercase tracking-widest px-1">Clasificación Biológica</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <button
+                                            onClick={() => setManualDomain('restaurador')}
+                                            className={`p-3 rounded-2xl border text-left transition-all ${manualDomain === 'restaurador' ? 'bg-accent/20 border-accent/70 text-accent shadow-[0_0_15px_-3px_var(--theme-glow)]' : 'bg-main border-transparent text-secondary hover:border-accent/30'}`}
+                                        >
+                                            <div className="text-[11px] font-bold mb-1 flex items-center gap-1"><Moon className="w-3 h-3" /> Restaurador</div>
+                                            <div className="text-[9px] text-tertiary opacity-80 leading-tight">Mantiene en cascada</div>
+                                        </button>
+                                        <button
+                                            onClick={() => setManualDomain('carga_cognitiva')}
+                                            className={`p-3 rounded-2xl border text-left transition-all ${manualDomain === 'carga_cognitiva' ? 'bg-accent/20 border-accent/70 text-accent shadow-[0_0_15px_-3px_var(--theme-glow)]' : 'bg-main border-transparent text-secondary hover:border-accent/30'}`}
+                                        >
+                                            <div className="text-[11px] font-bold mb-1 flex items-center gap-1"><Brain className="w-3 h-3" /> Cognitiva</div>
+                                            <div className="text-[9px] text-tertiary opacity-80 leading-tight">Se reduce en cascada</div>
+                                        </button>
+                                        <button
+                                            onClick={() => setManualDomain('carga_fisica')}
+                                            className={`p-3 rounded-2xl border text-left transition-all ${manualDomain === 'carga_fisica' ? 'bg-accent/20 border-accent/70 text-accent shadow-[0_0_15px_-3px_var(--theme-glow)]' : 'bg-main border-transparent text-secondary hover:border-accent/30'}`}
+                                        >
+                                            <div className="text-[11px] font-bold mb-1 flex items-center gap-1"><Dumbbell className="w-3 h-3" /> Física</div>
+                                            <div className="text-[9px] text-tertiary opacity-80 leading-tight">Se reduce en cascada</div>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
                                     <label className="text-[9px] font-bold text-tertiary uppercase tracking-widest px-1">Detalle o Comentarios</label>
                                     <textarea
                                         placeholder="Pautas adicionales para tu hábito..."
@@ -420,6 +503,99 @@ export function SetupHabit() {
                         </Card>
                     </section>
                 )}
+
+                {pausedHabits.length > 0 && (
+                    <section className="mb-24 animate-in fade-in duration-500">
+                        <div className="flex items-center gap-3 mb-6 px-1">
+                            <div className="p-2 bg-surface rounded-xl border border-white/5">
+                                <History className="w-5 h-5 text-tertiary" />
+                            </div>
+                            <div>
+                                <h2 className="text-sm font-bold text-primary uppercase tracking-widest">Hábitos en Pausa</h2>
+                                <p className="text-[10px] text-tertiary">Retomá la inercia de comportamientos que archivaste temporalmente.</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {pausedHabits.map(habit => (
+                                <div key={habit.id} className="bg-surface/50 border border-white/5 p-5 rounded-3xl flex items-center gap-4 justify-between group hover:border-accent/30 transition-all">
+                                    <div className="flex flex-col">
+                                        <h4 className="text-[12px] font-bold text-secondary group-hover:text-primary transition-colors">{habit.title}</h4>
+                                        <span className="text-[9px] text-tertiary uppercase tracking-widest">{habit.target_quantity} {habit.target_unit} - {habit.domain}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => handleResumeHabit(habit.id)}
+                                        className="text-[9px] font-bold text-accent uppercase tracking-widest bg-accent/10 hover:bg-accent/20 px-4 py-2 rounded-xl transition-all active:scale-95"
+                                    >
+                                        Reactivar
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
+                {/* Ego Trap Warning Modal */}
+                <AnimatePresence>
+                    {showEgoWarning && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-main/95 backdrop-blur-xl"
+                        >
+                            <motion.div
+                                initial={{ scale: 0.95, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                exit={{ scale: 0.95, opacity: 0 }}
+                                className="w-full max-w-sm bg-surface rounded-[40px] p-8 border border-warning/20 shadow-2xl relative overflow-hidden"
+                            >
+                                <div className="flex flex-col items-center text-center">
+                                    <div className="w-16 h-16 rounded-3xl bg-warning/10 text-warning flex items-center justify-center mb-6">
+                                        <AlertCircle className="w-8 h-8" />
+                                    </div>
+
+                                    <h2 className="text-xl font-bold text-primary mb-3">La Trampa del Ego</h2>
+                                    <p className="text-[12px] text-tertiary leading-relaxed mb-6">
+                                        Detectamos que intentas añadir un hábito ('<span className="font-bold text-white">{pendingHabitsToSave.find(h => existingTitles.has(h.title.toLowerCase().trim()))?.title}</span>') que ya conquistaste o que tienes activo.
+                                    </p>
+                                    <p className="text-[10px] text-secondary italic mb-6 leading-relaxed bg-main/50 p-4 rounded-2xl border border-white/5">
+                                        Si buscas progreso fácil para sentirte bien marcando una tarea ya dominada, te sugerimos frenar.<br /><br />
+                                        Si estás intentando crear una versión más avanzada (<strong>Sobrecarga Progresiva</strong>), puedes continuar libremente.
+                                    </p>
+
+                                    <div className="space-y-3 w-full">
+                                        <Button
+                                            onClick={() => {
+                                                setShowEgoWarning(false);
+                                                executeSave(pendingHabitsToSave);
+                                            }}
+                                            className="w-full py-4 text-[10px] font-bold tracking-[0.2em] uppercase rounded-2xl bg-warning hover:bg-warning/90 border-transparent text-white"
+                                        >
+                                            Confirmar Sobrecarga
+                                        </Button>
+                                        <button
+                                            onClick={() => {
+                                                setShowEgoWarning(false);
+                                            }}
+                                            className="w-full py-4 text-[10px] font-bold tracking-[0.2em] uppercase rounded-2xl bg-surface border border-warning/30 hover:bg-warning/10 text-primary transition-colors"
+                                        >
+                                            Ajustar Parámetros
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowEgoWarning(false);
+                                                setPendingHabitsToSave([]);
+                                            }}
+                                            className="w-full py-4 text-[10px] font-bold text-tertiary hover:text-primary uppercase tracking-[0.2em] transition-colors"
+                                        >
+                                            Descartar Hábito
+                                        </button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
                 <div className="fixed bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-main via-main to-transparent z-50">
                     <div className="max-w-2xl mx-auto">
